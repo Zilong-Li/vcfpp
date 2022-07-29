@@ -1,0 +1,10 @@
+.DS_Store
+.idea
+*.log
+a.*
+.cache
+tmp/
+test.cpp
+*.bin
+compile_commands.json
+*.o
