@@ -426,23 +426,61 @@ namespace vcfpp
         }
 
         template <typename T>
+        typename std::enable_if<std::is_same<T, int32_t>::value || std::is_same<T, float>::value ||
+                                    std::is_same<T, double>::value,
+                                void>::type
+        SetFormat(std::string tag, T v)
+        {
+            ret = -1;
+            int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
+            if (std::is_same<T, int32_t>::value)
+            {
+                if (bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_INT & 0xff))
+                    ret = bcf_update_format_int32(header->hdr, line, tag.c_str(), &v, 1);
+                else
+                    throw std::runtime_error("the given type of tag " + tag + " doesn't match the header");
+            }
+            else if (std::is_same<T, double>::value)
+            {
+                float v2 = v;
+                if (bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_REAL & 0xff))
+                    ret = bcf_update_format_float(header->hdr, line, tag.c_str(), &v2, 1);
+                else
+                    throw std::runtime_error("the given type of tag " + tag + " doesn't match the header");
+            }
+            if (ret < 0)
+                throw std::runtime_error("couldn't set format " + tag + " correctly.\n");
+        }
+
+        template <typename T>
         typename std::enable_if<std::is_same<T, std::string>::value || std::is_same<T, std::vector<char>>::value ||
                                     std::is_same<T, std::vector<int>>::value ||
                                     std::is_same<T, std::vector<float>>::value,
                                 void>::type
-        SetFormat(const T& v, std::string tag)
+        SetFormat(std::string tag, const T& v)
         {
+            ret = -1;
+            int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
             if (std::is_same<T, std::vector<int32_t>>::value)
             {
-                ret = bcf_update_format_int32(header->hdr, line, tag.c_str(), v.data(), v.size());
+                if (bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_INT & 0xff))
+                    ret = bcf_update_format_int32(header->hdr, line, tag.c_str(), v.data(), v.size());
+                else
+                    throw std::runtime_error("the given type of tag " + tag + " doesn't match the header");
             }
             else if (std::is_same<T, std::vector<char>>::value || std::is_same<T, std::string>::value)
             {
-                ret = bcf_update_format_char(header->hdr, line, tag.c_str(), v.data(), v.size());
+                if (bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_STR & 0xff))
+                    ret = bcf_update_format_char(header->hdr, line, tag.c_str(), v.data(), v.size());
+                else
+                    throw std::runtime_error("the given type of tag " + tag + " doesn't match the header");
             }
             else if (std::is_same<T, std::vector<float>>::value)
             {
-                ret = bcf_update_format_float(header->hdr, line, tag.c_str(), v.data(), v.size());
+                if (bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_REAL & 0xff))
+                    ret = bcf_update_format_float(header->hdr, line, tag.c_str(), v.data(), v.size());
+                else
+                    throw std::runtime_error("the given type of tag " + tag + " doesn't match the header");
             }
             if (ret < 0)
                 throw std::runtime_error("couldn't set format " + tag + " correctly.\n");
