@@ -233,9 +233,8 @@ namespace vcfpp
             for (i = 0; i < header->nsamples; i++)
             {
                 for (j = 0; j < nploidy; j++)
-                {
-                    gv[k++] = bcf_gt_allele(gts[j + i * nploidy]) != 0; // only parse 0 and 1, ie max(nploidy)=2; other
-                                                                        // values 2,3... will be converted to 1;
+                { // only parse 0 and 1, ie max(nploidy)=2; other values 2,3... will be converted to 1;
+                    gv[k++] = bcf_gt_allele(gts[j + i * nploidy]) != 0;
                 }
                 nphased += (gts[1 + i * nploidy] & 1) == 1;
             }
@@ -484,6 +483,94 @@ namespace vcfpp
             }
         }
 
+        inline bool
+        valueIsMissing() const
+        {
+            return isValueMissing;
+        }
+
+        inline std::string
+        CHROM() const
+        {
+            return std::string(bcf_hdr_id2name(header->hdr, line->rid));
+        }
+
+        // 0-based
+        inline int64_t
+        POS() const
+        {
+            return line->pos;
+        }
+
+        // 0-based start of all type of variants
+        inline int64_t
+        Start() const
+        {
+            return line->pos;
+        }
+
+        // for SV variants
+        inline int64_t
+        End() const
+        {
+            return line->pos + line->rlen;
+        }
+
+        inline std::string
+        REF() const
+        {
+            return std::string(line->d.allele[0]);
+        }
+
+        inline std::string
+        ALT() const
+        {
+            std::string s;
+            for (int i = 1; i < line->n_allele; i++)
+            {
+                s += std::string(line->d.allele[i]) + ",";
+            }
+            s.pop_back();
+            return s;
+        }
+
+        inline float
+        QUAL()
+        {
+            if (bcf_float_is_missing(line->qual))
+            {
+                isValueMissing = true;
+                return bcf_float_missing;
+            }
+            else
+            {
+                return line->qual;
+            }
+        }
+
+        inline std::string
+        FILTER()
+        {
+            if (line->d.n_flt == 0)
+            {
+                return ".";
+            }
+            else if (line->d.n_flt == 1)
+            {
+                return std::string(bcf_hdr_int2id(header->hdr, BCF_DT_ID, line->d.flt[0]));
+            }
+            else
+            {
+                std::string s;
+                for (int i = 1; i < line->d.n_flt; i++)
+                {
+                    s += std::string(bcf_hdr_int2id(header->hdr, BCF_DT_ID, line->d.flt[i])) + ",";
+                }
+                s.pop_back();
+                return s;
+            }
+        }
+
         bool isAllPhased = false;
         int nploidy = 0;
         int shape1 = 0;
@@ -496,7 +583,8 @@ namespace vcfpp
         bcf_info_t* info = NULL;
         int32_t* gts = NULL;
         int ndst, ret;
-        kstring_t s = {0, 0, NULL}; // kstring
+        kstring_t s = {0, 0, NULL};  // kstring
+        bool isValueMissing = false; // whenever parsing a tag have to reset this variable
     };
 
     class BcfReader
@@ -581,6 +669,7 @@ namespace vcfpp
                 if (isBcf)
                 {
                     ret = bcf_itr_next(fp, itr, r.line);
+                    bcf_unpack(r.line, BCF_UN_ALL);
                     return (ret >= 0);
                 }
                 else
@@ -589,6 +678,7 @@ namespace vcfpp
                     if (slen > 0)
                     {
                         ret = vcf_parse(&s, r.header->hdr, r.line); // ret > 0, error
+                        bcf_unpack(r.line, BCF_UN_ALL);
                     }
                     return (ret <= 0) && (slen > 0);
                 }
@@ -596,6 +686,8 @@ namespace vcfpp
             else
             {
                 ret = bcf_read(fp, r.header->hdr, r.line);
+                // unpack record immediately. not lazy
+                bcf_unpack(r.line, BCF_UN_ALL);
                 return (ret == 0);
             }
         }
@@ -715,6 +807,7 @@ namespace vcfpp
         }
 
         BcfHeader header; // bcf header
+
 
     private:
         htsFile* fp = NULL; // hts file
