@@ -1,3 +1,8 @@
+/* File: vcfpp.h
+** Author: Zilong Li (zilong.dk@gmail.com)
+** Copyright (C) 2022
+*/
+
 #ifndef VCFPP_H_
 #define VCFPP_H_
 
@@ -14,7 +19,7 @@ extern "C"
 
 namespace vcfpp
 {
-    bool isEndWith(std::string const& s, std::string e)
+    bool isEndWith(std::string const& s, std::string const& e)
     {
         if (s.length() >= e.length())
         {
@@ -269,7 +274,8 @@ namespace vcfpp
         {
             info = bcf_get_info(header->hdr, line, tag.c_str());
             S* buf = NULL;
-            ndst = 0; ret = -1;
+            ndst = 0;
+            ret = -1;
             if (info->len > 1)
             {
                 if (info->type == BCF_BT_INT8 || info->type == BCF_BT_INT16 || info->type == BCF_BT_INT32)
@@ -293,7 +299,9 @@ namespace vcfpp
         }
 
         template <typename T>
-        typename std::enable_if<std::is_same<T, std::string>::value || std::is_same<T, int>::value || std::is_same<T, float>::value || std::is_same<T, double>::value, void>::type
+        typename std::enable_if<std::is_same<T, std::string>::value || std::is_same<T, int>::value ||
+                                    std::is_same<T, float>::value || std::is_same<T, double>::value,
+                                void>::type
         GetInfo(std::string tag, T& v)
         {
             info = bcf_get_info(header->hdr, line, tag.c_str());
