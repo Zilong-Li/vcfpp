@@ -261,49 +261,57 @@ namespace vcfpp
             }
         }
 
+        template <typename T, typename S = typename T::value_type>
+        typename std::enable_if<std::is_same<T, std::vector<char>>::value || std::is_same<T, std::vector<int>>::value ||
+                                    std::is_same<T, std::vector<float>>::value,
+                                void>::type
+        GetInfo(std::string tag, T& v)
+        {
+            info = bcf_get_info(header->hdr, line, tag.c_str());
+            S* buf = NULL;
+            ndst = 0; ret = -1;
+            if (info->len > 1)
+            {
+                if (info->type == BCF_BT_INT8 || info->type == BCF_BT_INT16 || info->type == BCF_BT_INT32)
+                {
+                    ret = bcf_get_info_int32(header->hdr, line, tag.c_str(), &buf, &ndst);
+                }
+                else if (info->type == BCF_BT_FLOAT)
+                {
+                    ret = bcf_get_info_float(header->hdr, line, tag.c_str(), &buf, &ndst);
+                }
+            }
+            if (ret >= 0)
+            {
+                // user have to check if there is missing in the return v;
+                v = std::vector<S>(buf, buf + ret);
+            }
+            else
+            {
+                throw std::runtime_error("couldn't parse the " + tag + " format of this variant.\n");
+            }
+        }
+
         template <typename T>
-        T GetInfo(std::string tag)
+        typename std::enable_if<std::is_same<T, std::string>::value || std::is_same<T, int>::value || std::is_same<T, float>::value || std::is_same<T, double>::value, void>::type
+        GetInfo(std::string tag, T& v)
         {
             info = bcf_get_info(header->hdr, line, tag.c_str());
             if (info->len == 1)
             {
                 // scalar value
-                if (info->type == BCF_BT_INT8)
+                if (info->type == BCF_BT_INT8 || info->type == BCF_BT_INT16 || info->type == BCF_BT_INT32)
                 {
-                    if (info->v1.i == INT8_MIN)
-                        return -1;
-                    else
-                        return info->v1.i;
-                }
-                else if (info->type == BCF_BT_INT16)
-                {
-                    if (info->v1.i == INT16_MIN)
-                        return -1;
-                    else
-                        return info->v1.i;
-                }
-                else if (info->type == BCF_BT_INT32)
-                {
-                    if (info->v1.i == INT32_MIN)
-                        return -1;
-                    else
-                        return info->v1.i;
+                    v = info->v1.i;
                 }
                 else if (info->type == BCF_BT_FLOAT)
                 {
-                    if (bcf_float_is_missing(info->v1.f))
-                        return -1;
-                    else
-                        return info->v1.f;
-                }
-                else
-                {
-                    return -1;
+                    v = info->v1.f;
                 }
             }
-            else
+            if (info->type == BCF_BT_CHAR && std::is_same<T, std::string>::value)
             {
-                return -1;
+                (v = std::string(reinterpret_cast<char*>(info->vptr), info->vptr_len));
             }
         }
 
