@@ -178,10 +178,7 @@ namespace vcfpp
         inline void
         SetVersion(const std::string& version) const
         {
-            if (bcf_hdr_set_version(hdr, version.c_str()) != 0)
-            {
-                throw std::runtime_error("couldn't set vcf version correctly.\n");
-            }
+            bcf_hdr_set_version(hdr, version.c_str());
         }
 
         int nsamples = 0;
@@ -261,18 +258,13 @@ namespace vcfpp
             shape1 = fmt->n;
             ndst = 0;
             S* buf = NULL;
-            if (std::is_same<T, std::vector<int>>::value)
-            {
+            int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
+            if (bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_INT & 0xff))
                 ret = bcf_get_format_int32(header->hdr, line, tag.c_str(), &buf, &ndst);
-            }
-            else if (std::is_same<T, std::vector<char>>::value)
-            {
-                ret = bcf_get_format_char(header->hdr, line, tag.c_str(), &buf, &ndst);
-            }
-            else if (std::is_same<T, std::vector<float>>::value)
-            {
+            else if (bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_REAL & 0xff))
                 ret = bcf_get_format_float(header->hdr, line, tag.c_str(), &buf, &ndst);
-            }
+            else if (bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_STR & 0xff))
+                ret = bcf_get_format_char(header->hdr, line, tag.c_str(), &buf, &ndst);
             if (ret >= 0)
             {
                 // user have to check if there is missing in the return v;
@@ -285,8 +277,7 @@ namespace vcfpp
         }
 
         template <typename T, typename S = typename T::value_type>
-        typename std::enable_if<std::is_same<T, std::vector<char>>::value || std::is_same<T, std::vector<int>>::value ||
-                                    std::is_same<T, std::vector<float>>::value,
+        typename std::enable_if<std::is_same<T, std::vector<int>>::value || std::is_same<T, std::vector<float>>::value,
                                 void>::type
         GetInfo(std::string tag, T& v)
         {
@@ -306,14 +297,9 @@ namespace vcfpp
                 }
             }
             if (ret >= 0)
-            {
-                // user have to check if there is missing in the return v;
-                v = std::vector<S>(buf, buf + ret);
-            }
+                v = std::vector<S>(buf, buf + ret);  // user have to check if there is missing in the return v;
             else
-            {
                 throw std::runtime_error("couldn't parse the " + tag + " format of this variant.\n");
-            }
         }
 
         template <typename T>
@@ -322,9 +308,9 @@ namespace vcfpp
         GetInfo(std::string tag, T& v)
         {
             info = bcf_get_info(header->hdr, line, tag.c_str());
+            // scalar value
             if (info->len == 1)
             {
-                // scalar value
                 if (info->type == BCF_BT_INT8 || info->type == BCF_BT_INT16 || info->type == BCF_BT_INT32)
                 {
                     v = info->v1.i;
@@ -334,6 +320,10 @@ namespace vcfpp
                     v = info->v1.f;
                 }
             }
+            else
+            {
+                throw std::runtime_error(tag + " has to be of int or float type\n");
+            }
         }
 
         template <typename T>
@@ -342,9 +332,9 @@ namespace vcfpp
         {
             info = bcf_get_info(header->hdr, line, tag.c_str());
             if (info->type == BCF_BT_CHAR)
-            {
                 v = std::string(reinterpret_cast<char*>(info->vptr), info->vptr_len);
-            }
+            else
+                throw std::runtime_error(tag + " has to be of string type\n");
         }
 
         template <typename T>
@@ -352,23 +342,13 @@ namespace vcfpp
         SetInfo(std::string tag, const T& v)
         {
             ret = -1;
+            // bcf_hrec_set_val
             // bcf_update_info_flag(header->hdr, line, tag.c_str(), NULL, 1);
             int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
-            if (std::is_same<T, int>::value)
-            {
-                if (bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_INT & 0xff))
-                    ret = bcf_update_info_int32(header->hdr, line, tag.c_str(), &v, 1);
-                else
-                    throw std::runtime_error("the given type of tag " + tag + " doesn't match the header");
-            }
-            else if (std::is_same<T, float>::value)
-            {
-                // bcf_hrec_set_val
-                if (bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_REAL & 0xff))
-                    ret = bcf_update_info_float(header->hdr, line, tag.c_str(), &v, 1);
-                else
-                    throw std::runtime_error("the given type of tag " + tag + " doesn't match the header");
-            }
+            if (bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_INT & 0xff))
+                ret = bcf_update_info_int32(header->hdr, line, tag.c_str(), &v, 1);
+            else if (bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_REAL & 0xff))
+                ret = bcf_update_info_float(header->hdr, line, tag.c_str(), &v, 1);
             if (ret < 0)
             {
                 throw std::runtime_error("couldn't set " + tag +
@@ -385,30 +365,16 @@ namespace vcfpp
             ret = -1;
             // bcf_update_info_flag(header->hdr, line, tag.c_str(), NULL, 1);
             int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
-            if (std::is_same<T, std::vector<int>>::value)
-            {
-                if (bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_INT & 0xff))
-                    ret = bcf_update_info_int32(header->hdr, line, tag.c_str(), v.data(), v.size());
-                else
-                    throw std::runtime_error("the given type of tag " + tag + " doesn't match the header");
-            }
-            else if (std::is_same<T, std::vector<float>>::value)
-            {
-                if (bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_REAL & 0xff))
-                    ret = bcf_update_info_float(header->hdr, line, tag.c_str(), v.data(), v.size());
-                else
-                    throw std::runtime_error("the given type of tag " + tag + " doesn't match the header");
-            }
-            else if (std::is_same<T, std::string>::value)
-            {
-                if (bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_STR & 0xff))
-                    ret = bcf_update_info_string(header->hdr, line, tag.c_str(), v.data());
-                else
-                    throw std::runtime_error("the given type of tag " + tag + " doesn't match the header");
-            }
+            if (bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_INT & 0xff))
+                ret = bcf_update_info_int32(header->hdr, line, tag.c_str(), v.data(), v.size());
+            else if (bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_REAL & 0xff))
+                ret = bcf_update_info_float(header->hdr, line, tag.c_str(), v.data(), v.size());
+            else if (bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_STR & 0xff))
+                ret = bcf_update_info_string(header->hdr, line, tag.c_str(), v.data());
             if (ret < 0)
             {
-                throw std::runtime_error("couldn't remove " + tag + " for this variant.\n");
+                throw std::runtime_error("couldn't set " + tag +
+                                         " for this variant.\nplease add the tag in header first.\n");
             }
         }
 
@@ -418,17 +384,11 @@ namespace vcfpp
             ret = -1;
             int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
             if (bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_INT & 0xff))
-            {
                 ret = bcf_update_info_int32(header->hdr, line, tag.c_str(), NULL, 0);
-            }
             else if (bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_REAL & 0xff))
-            {
                 ret = bcf_update_info_float(header->hdr, line, tag.c_str(), NULL, 0);
-            }
             else if (bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_STR & 0xff))
-            {
                 ret = bcf_update_info_string(header->hdr, line, tag.c_str(), NULL);
-            }
             if (ret < 0)
             {
                 throw std::runtime_error("couldn't remove " + tag + " for this variant.\n");
@@ -473,22 +433,12 @@ namespace vcfpp
         SetFormat(std::string tag, T v)
         {
             ret = -1;
+            float v2 = v;
             int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
-            if (std::is_same<T, int32_t>::value)
-            {
-                if (bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_INT & 0xff))
-                    ret = bcf_update_format_int32(header->hdr, line, tag.c_str(), &v, 1);
-                else
-                    throw std::runtime_error("the given type of tag " + tag + " doesn't match the header");
-            }
-            else if (std::is_same<T, double>::value)
-            {
-                float v2 = v;
-                if (bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_REAL & 0xff))
-                    ret = bcf_update_format_float(header->hdr, line, tag.c_str(), &v2, 1);
-                else
-                    throw std::runtime_error("the given type of tag " + tag + " doesn't match the header");
-            }
+            if (bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_INT & 0xff))
+                ret = bcf_update_format_int32(header->hdr, line, tag.c_str(), &v, 1);
+            else if (bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_REAL & 0xff))
+                ret = bcf_update_format_float(header->hdr, line, tag.c_str(), &v2, 1);
             if (ret < 0)
                 throw std::runtime_error("couldn't set format " + tag + " correctly.\n");
         }
@@ -502,27 +452,12 @@ namespace vcfpp
         {
             ret = -1;
             int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
-            if (std::is_same<T, std::vector<int32_t>>::value)
-            {
-                if (bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_INT & 0xff))
-                    ret = bcf_update_format_int32(header->hdr, line, tag.c_str(), v.data(), v.size());
-                else
-                    throw std::runtime_error("the given type of tag " + tag + " doesn't match the header");
-            }
-            else if (std::is_same<T, std::vector<char>>::value || std::is_same<T, std::string>::value)
-            {
-                if (bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_STR & 0xff))
-                    ret = bcf_update_format_char(header->hdr, line, tag.c_str(), v.data(), v.size());
-                else
-                    throw std::runtime_error("the given type of tag " + tag + " doesn't match the header");
-            }
-            else if (std::is_same<T, std::vector<float>>::value)
-            {
-                if (bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_REAL & 0xff))
-                    ret = bcf_update_format_float(header->hdr, line, tag.c_str(), v.data(), v.size());
-                else
-                    throw std::runtime_error("the given type of tag " + tag + " doesn't match the header");
-            }
+            if (bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_INT & 0xff))
+                ret = bcf_update_format_int32(header->hdr, line, tag.c_str(), v.data(), v.size());
+            else if (bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_STR & 0xff))
+                ret = bcf_update_format_char(header->hdr, line, tag.c_str(), v.data(), v.size());
+            else if (bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_REAL & 0xff))
+                ret = bcf_update_format_float(header->hdr, line, tag.c_str(), v.data(), v.size());
             if (ret < 0)
                 throw std::runtime_error("couldn't set format " + tag + " correctly.\n");
         }
