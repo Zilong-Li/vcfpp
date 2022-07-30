@@ -19,7 +19,8 @@ extern "C"
 
 namespace vcfpp
 {
-    bool isEndWith(std::string const& s, std::string const& e)
+    bool
+    isEndWith(std::string const& s, std::string const& e)
     {
         if (s.length() >= e.length())
         {
@@ -49,33 +50,38 @@ namespace vcfpp
         }
 
         // todo : check if the value is valid for vcf specification
-        inline void AddInfo(const std::string& id, const std::string& number, const std::string& type,
-                            const std::string& description)
+        inline void
+        AddInfo(const std::string& id, const std::string& number, const std::string& type,
+                const std::string& description)
         {
             AddLine("##INFO=<ID=" + id + ",Number=" + number + ",Type=" + type + ",Description=\"" + description +
                     "\">");
         }
 
-        inline void AddFormat(const std::string& id, const std::string& number, const std::string& type,
-                              const std::string& description)
+        inline void
+        AddFormat(const std::string& id, const std::string& number, const std::string& type,
+                  const std::string& description)
         {
             AddLine("##FORMAT=<ID=" + id + ",Number=" + number + ",Type=" + type + ",Description=\"" + description +
                     "\">");
         }
 
-        inline void AddFilter(const std::string& id, const std::string& number, const std::string& type,
-                              const std::string& description)
+        inline void
+        AddFilter(const std::string& id, const std::string& number, const std::string& type,
+                  const std::string& description)
         {
             AddLine("##FILTER=<ID=" + id + ",Number=" + number + ",Type=" + type + ",Description=\"" + description +
                     "\">");
         }
 
-        inline void AddContig(const std::string& id)
+        inline void
+        AddContig(const std::string& id)
         {
             AddLine("##contig=<ID=" + id + ">");
         }
 
-        inline void AddLine(const std::string& str)
+        inline void
+        AddLine(const std::string& str)
         {
             ret = bcf_hdr_append(hdr, str.c_str());
             if (ret != 0)
@@ -85,7 +91,8 @@ namespace vcfpp
                 throw std::runtime_error("could not add " + str + " to header\n");
         }
 
-        inline void AddSample(const std::string& sample)
+        inline void
+        AddSample(const std::string& sample)
         {
             bcf_hdr_add_sample(hdr, sample.c_str());
             if (bcf_hdr_sync(hdr) != 0)
@@ -94,7 +101,8 @@ namespace vcfpp
             }
         }
 
-        inline std::string AsString() const
+        inline std::string
+        AsString() const
         {
             kstring_t s = {0, 0, NULL};          // kstring
             if (bcf_hdr_format(hdr, 0, &s) == 0) // append header string to s.s! append!
@@ -103,7 +111,8 @@ namespace vcfpp
                 throw std::runtime_error("failed to convert formatted header to string");
         }
 
-        std::vector<std::string> GetSamples() const
+        std::vector<std::string>
+        GetSamples() const
         {
             std::vector<std::string> vec;
             for (int i = 0; i < bcf_hdr_nsamples(hdr); i++)
@@ -113,7 +122,8 @@ namespace vcfpp
             return vec;
         }
 
-        std::vector<std::string> GetSeqnames()
+        std::vector<std::string>
+        GetSeqnames()
         {
             const char** seqs = bcf_hdr_seqnames(hdr, &ret);
             if (ret == 0)
@@ -127,28 +137,33 @@ namespace vcfpp
             return vec;
         }
 
-        inline void RemoveContig(std::string tag) const
+        inline void
+        RemoveContig(std::string tag) const
         {
 
             bcf_hdr_remove(hdr, BCF_HL_CTG, tag.c_str());
         }
 
-        inline void RemoveInfo(std::string tag) const
+        inline void
+        RemoveInfo(std::string tag) const
         {
             bcf_hdr_remove(hdr, BCF_HL_INFO, tag.c_str());
         }
 
-        inline void RemoveFormat(std::string tag) const
+        inline void
+        RemoveFormat(std::string tag) const
         {
             bcf_hdr_remove(hdr, BCF_HL_FMT, tag.c_str());
         }
 
-        inline void RemoveFilter(std::string tag) const
+        inline void
+        RemoveFilter(std::string tag) const
         {
             bcf_hdr_remove(hdr, BCF_HL_FLT, tag.c_str());
         }
 
-        inline void SetSamples(const std::string& samples)
+        inline void
+        SetSamples(const std::string& samples)
         {
 
             ret = bcf_hdr_set_samples(hdr, samples.c_str(), 0);
@@ -162,9 +177,13 @@ namespace vcfpp
             }
         }
 
-        inline int SetVersion(const std::string& version) const
+        inline void
+        SetVersion(const std::string& version) const
         {
-            return bcf_hdr_set_version(hdr, version.c_str());
+            if (bcf_hdr_set_version(hdr, version.c_str()) != 0)
+            {
+                throw std::runtime_error("couldn't set vcf version correctly.\n");
+            }
         }
 
         int nsamples = 0;
@@ -189,7 +208,8 @@ namespace vcfpp
         {
         }
 
-        std::string AsString()
+        std::string
+        AsString()
         {
             s.s = NULL;
             s.l = 0;
@@ -299,9 +319,8 @@ namespace vcfpp
         }
 
         template <typename T>
-        typename std::enable_if<std::is_same<T, std::string>::value || std::is_same<T, int>::value ||
-                                    std::is_same<T, float>::value || std::is_same<T, double>::value,
-                                void>::type
+        typename std::enable_if<
+            std::is_same<T, int>::value || std::is_same<T, float>::value || std::is_same<T, double>::value, void>::type
         GetInfo(std::string tag, T& v)
         {
             info = bcf_get_info(header->hdr, line, tag.c_str());
@@ -317,9 +336,16 @@ namespace vcfpp
                     v = info->v1.f;
                 }
             }
-            if (info->type == BCF_BT_CHAR && std::is_same<T, std::string>::value)
+        }
+
+        template <typename T>
+        typename std::enable_if<std::is_same<T, std::string>::value, void>::type
+        GetInfo(std::string tag, T& v)
+        {
+            info = bcf_get_info(header->hdr, line, tag.c_str());
+            if (info->type == BCF_BT_CHAR)
             {
-                (v = std::string(reinterpret_cast<char*>(info->vptr), info->vptr_len));
+                v = std::string(reinterpret_cast<char*>(info->vptr), info->vptr_len);
             }
         }
 
@@ -388,7 +414,8 @@ namespace vcfpp
             }
         }
 
-        void RemoveInfo(std::string tag)
+        void
+        RemoveInfo(std::string tag)
         {
             ret = -1;
             int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
@@ -502,7 +529,8 @@ namespace vcfpp
                 throw std::runtime_error("couldn't set format " + tag + " correctly.\n");
         }
 
-        void AddLineFromString(const std::string& vcfline)
+        void
+        AddLineFromString(const std::string& vcfline)
         {
             std::vector<char> str(vcfline.begin(), vcfline.end());
             str.push_back('\0'); // don't forget string has no \0;
@@ -584,14 +612,16 @@ namespace vcfpp
                 hts_itr_destroy(itr);
         }
 
-        inline int SetThreads(int n)
+        inline int
+        SetThreads(int n)
         {
             return hts_set_threads(fp, n);
         }
 
         // 1. check and load index first
         // 2. query iterval region
-        void SetRegion(const std::string& region)
+        void
+        SetRegion(const std::string& region)
         {
             if (isEndWith(fname, "bcf") || isEndWith(fname, "bcf.gz"))
             {
@@ -609,10 +639,11 @@ namespace vcfpp
             }
         }
 
-        // reset current region. seek to the first record.
+        // TODO reset current region. seek to the first record.
         void Reset();
 
-        bool GetNextVariant(BcfRecord& r)
+        bool
+        GetNextVariant(BcfRecord& r)
         {
             int ret = -1;
             if (itr != NULL)
@@ -690,17 +721,17 @@ namespace vcfpp
             bcf_destroy(b);
         }
 
-        void InitalHeader(std::string version = "VCF4.1")
+        void
+        InitalHeader(std::string version = "VCF4.1")
         {
             header = BcfHeader();
             header.hdr = bcf_hdr_init("w");
-            ret = header.SetVersion(version);
-            if (ret != 0)
-                throw std::runtime_error("couldn't set the version correctly.\n");
+            header.SetVersion(version);
         }
 
         // make a copy of given header
-        void InitalHeader(const BcfHeader& h)
+        void
+        InitalHeader(const BcfHeader& h)
         {
             header = BcfHeader();
             header.hdr = bcf_hdr_dup(h.hdr); // make a copy of given header
@@ -709,7 +740,8 @@ namespace vcfpp
                 throw std::runtime_error("couldn't copy the header from another vcf.\n");
         }
 
-        void WriteLine(const std::string& vcfline)
+        void
+        WriteLine(const std::string& vcfline)
         {
             if (!isHeaderWritten)
                 WriteHeader();
@@ -731,7 +763,8 @@ namespace vcfpp
                 throw std::runtime_error("error writing: " + vcfline + "\n");
         }
 
-        bool WriteHeader()
+        bool
+        WriteHeader()
         {
             ret = bcf_hdr_write(fp, header.hdr);
             if (ret == 0)
@@ -740,7 +773,8 @@ namespace vcfpp
                 return false;
         }
 
-        inline bool WriteRecord(BcfRecord& v)
+        inline bool
+        WriteRecord(BcfRecord& v)
         {
             if (!isHeaderWritten)
                 WriteHeader();

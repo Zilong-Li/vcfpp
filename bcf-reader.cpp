@@ -23,19 +23,19 @@ TEST_CASE("Parsing VCF with specific tag", "[bcf-reader]")
         }
         cout << endl;
 
-        v.GetFormat(ad, "AD");
+        v.GetFormat("AD", ad);
         for (auto i : ad) {
             cout << i << ":";
         }
         cout << endl;
 
-        v.GetFormat(gq, "GQ");
+        v.GetFormat("GQ", gq);
         for (auto i : gq) {
             cout << i << ":";
         }
         cout << endl;
 
-        v.GetFormat(gatk, "GATK");
+        v.GetFormat("GATK", gatk);
         for (int i = 0; i < v.header->nsamples; i++) {
             cout << string(gatk.begin()+ i*v.shape1, gatk.begin() + i * v.shape1 + v.shape1 - 1) << ":";
         }
@@ -52,15 +52,16 @@ TEST_CASE("Parsing VCF with specific tag", "[bcf-reader]")
     BcfReader br2("test/index.vcf");
     BcfRecord v2(br2.header);
     br2.GetNextVariant(v2);
-    v2.RemoveInfo<int>("DP");
+    v2.RemoveInfo("DP");
     br2.header.AddInfo("Str", "1", "String", "this is a test for adding string in INFO");
     v2.SetInfo("Str", string{"S1S2"});
     v2.SetInfo("Str", string{"str"});
     v2.SetInfo("DP", vector<int>{1,2});
     v2.SetInfo("DP", 2);
-
+    int a;
+    v2.GetInfo("DP", a);
+    cout << a << endl;
     cout << br2.header.AsString() << endl;
-    cout << v2.GetInfo<float>("DP") << endl;
     cout << v2.AsString() << endl;
 
     REQUIRE(n == 10);

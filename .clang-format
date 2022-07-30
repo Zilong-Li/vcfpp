@@ -1,4 +1,5 @@
 ﻿---
+BasedOnStyle: LLVM
 AccessModifierOffset: '-4'
 AllowShortBlocksOnASingleLine: 'false'
 AllowShortCaseLabelsOnASingleLine: 'false'
@@ -6,11 +7,14 @@ AllowShortFunctionsOnASingleLine: None
 AllowShortIfStatementsOnASingleLine: 'false'
 AllowShortLoopsOnASingleLine: 'false'
 AlwaysBreakTemplateDeclarations: 'true'
+AlignAfterOpenBracket: true
+AlwaysBreakAfterDefinitionReturnType: All
 BreakBeforeBraces: Allman
 ColumnLimit: '120'
 IndentCaseLabels: 'true'
 IndentWidth: '4'
 Language: Cpp
+Standard: Cpp11
 MaxEmptyLinesToKeep: '3'
 NamespaceIndentation: All
 PenaltyBreakComment: '100000'
