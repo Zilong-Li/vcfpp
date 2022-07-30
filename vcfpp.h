@@ -45,8 +45,6 @@ namespace vcfpp
 
         ~BcfHeader()
         {
-            // bcf_hdr_destroy(hdr); // cause double free issue
-            bcf_hrec_destroy(hrec);
         }
 
         // todo : check if the value is valid for vcf specification
