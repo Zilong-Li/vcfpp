@@ -285,19 +285,16 @@ namespace vcfpp
             S* buf = NULL;
             ndst = 0;
             ret = -1;
-            if (info->len > 1)
+            if (info->type == BCF_BT_INT8 || info->type == BCF_BT_INT16 || info->type == BCF_BT_INT32)
             {
-                if (info->type == BCF_BT_INT8 || info->type == BCF_BT_INT16 || info->type == BCF_BT_INT32)
-                {
-                    ret = bcf_get_info_int32(header->hdr, line, tag.c_str(), &buf, &ndst);
-                }
-                else if (info->type == BCF_BT_FLOAT)
-                {
-                    ret = bcf_get_info_float(header->hdr, line, tag.c_str(), &buf, &ndst);
-                }
+                ret = bcf_get_info_int32(header->hdr, line, tag.c_str(), &buf, &ndst);
+            }
+            else if (info->type == BCF_BT_FLOAT)
+            {
+                ret = bcf_get_info_float(header->hdr, line, tag.c_str(), &buf, &ndst);
             }
             if (ret >= 0)
-                v = std::vector<S>(buf, buf + ret);  // user have to check if there is missing in the return v;
+                v = std::vector<S>(buf, buf + ret); // user have to check if there is missing in the return v;
             else
                 throw std::runtime_error("couldn't parse the " + tag + " format of this variant.\n");
         }
@@ -322,7 +319,7 @@ namespace vcfpp
             }
             else
             {
-                throw std::runtime_error(tag + " has to be of int or float type\n");
+                throw std::runtime_error(tag + " has multiple values. please feed a vector instead.\n");
             }
         }
 
