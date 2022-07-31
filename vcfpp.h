@@ -1,7 +1,13 @@
-/* File: vcfpp.h
-** Author: Zilong Li (zilong.dk@gmail.com)
-** Copyright (C) 2022
-*/
+/*******************************************************************************
+ * @file        vcfpp.h
+ * @author      Zilong Li
+ * @email       zilong.dk@gmail.com
+ * @version     v0.0.1
+ * @breif       a single C++ file for manipulating VCF
+ * @license     MIT
+ * Copyright (C) 2022
+ * The use of this code is governed by the LICENSE file.
+ ******************************************************************************/
 
 #ifndef VCFPP_H_
 #define VCFPP_H_
@@ -11,10 +17,11 @@
 #include <type_traits>
 #include <vector>
 
+// make sure you have htslib installed
 extern "C"
 {
-#include "htslib/tbx.h"
-#include "htslib/vcf.h"
+#include <htslib/tbx.h>
+#include <htslib/vcf.h>
 }
 
 namespace vcfpp
@@ -46,7 +53,7 @@ namespace vcfpp
         {
         }
 
-        // todo : check if the value is valid for vcf specification
+        // TODO: check if the value is valid for vcf specification
         inline void addInfo(const std::string& id, const std::string& number, const std::string& type,
                             const std::string& description)
         {
@@ -75,7 +82,7 @@ namespace vcfpp
 
         inline void addLine(const std::string& str)
         {
-            ret = 0;
+            int ret = 0;
             ret = bcf_hdr_append(hdr, str.c_str());
             if (ret != 0)
                 throw std::runtime_error("could not add " + str + " to header\n");
@@ -112,8 +119,9 @@ namespace vcfpp
             return vec;
         }
 
-        std::vector<std::string> getSeqnames()
+        std::vector<std::string> getSeqnames() const
         {
+            int ret = 0;
             const char** seqs = bcf_hdr_seqnames(hdr, &ret);
             if (ret == 0)
                 printf("there is no contig id in the header!\n");
@@ -147,8 +155,9 @@ namespace vcfpp
             bcf_hdr_remove(hdr, BCF_HL_FLT, tag.c_str());
         }
 
-        inline void setSamples(const std::string& samples)
+        inline void setSamples(const std::string& samples) const
         {
+            int ret = 0;
             ret = bcf_hdr_set_samples(hdr, samples.c_str(), 0);
             if (ret > 0)
             {
@@ -165,12 +174,17 @@ namespace vcfpp
             bcf_hdr_set_version(hdr, version.c_str());
         }
 
+        inline int nSamples()
+        {
+            nsamples = bcf_hdr_nsamples(hdr);
+            return nsamples;
+        }
+
         int nsamples = 0;
 
     private:
         bcf_hdr_t* hdr = NULL;   // bcf header
         bcf_hrec_t* hrec = NULL; // populate header
-        int ret = 0;
     };
 
     class BcfRecord
@@ -598,9 +612,20 @@ namespace vcfpp
             }
         }
 
-        bool isAllPhased = false;
-        int nploidy = 0;
-        int shape1 = 0;
+        inline bool allPhased() const
+        {
+            return isAllPhased;
+        }
+
+        inline int ploidy() const
+        {
+            return nploidy;
+        }
+
+        inline std::tuple<int, int> shapeOfQuery() const
+        {
+            return std::make_tuple(header->nsamples, shape1);
+        }
 
     private:
         std::shared_ptr<BcfHeader> header;
@@ -612,11 +637,19 @@ namespace vcfpp
         int ndst, ret;
         kstring_t s = {0, 0, NULL}; // kstring
         bool noneMissing = true;    // whenever parsing a tag have to reset this variable
+        bool isAllPhased = false;
+        int nploidy = 0;
+        int shape1 = 0;
     };
 
     class BcfReader
     {
     public:
+
+        /**
+         *  @brief construct a vcf/bcf reader from file.
+         *  @param fname_   the input vcf/bcf with suffix vcf(.gz) or bcf(.gz)
+         */
         BcfReader(const std::string& fname_) : fname(fname_), header(BcfHeader())
         {
             fp = hts_open(fname.c_str(), "r");
@@ -625,11 +658,13 @@ namespace vcfpp
         }
 
         /**
-         *  @param samples  samples to include or exclude as a comma-separated string.
-         *              LIST        .. select samples in list
-         *              ^LIST       .. exclude samples from list
-         *              -           .. include all samples
-         *              NULL        .. exclude all samples
+         *  @brief construct a vcf/bcf reader with subset samples
+         *  @param fname_   the input vcf/bcf with suffix vcf(.gz) or bcf(.gz)
+         *  @param samples  LIST samples to include or exclude as a comma-separated string. \n
+         *                  LIST : select samples in list \n
+         *                  ^LIST : exclude samples from list \n
+         *                  "-" : include all samples \n
+         *                  "" : exclude all samples
          */
         BcfReader(const std::string& fname_, const std::string& samples) : fname(fname_)
         {
@@ -639,6 +674,16 @@ namespace vcfpp
             header.nsamples = bcf_hdr_nsamples(header.hdr);
         }
 
+        /**
+         *  @brief construct a vcf/bcf reader with subset samples in target region
+         *  @param fname_   the input vcf/bcf with suffix vcf(.gz) or bcf(.gz)
+         *  @param samples  LIST samples to include or exclude as a comma-separated string. \n
+         *                  LIST : select samples in list \n
+         *                  ^LIST : exclude samples from list \n
+         *                  "-" : include all samples \n
+         *                  "" : exclude all samples
+         *  @param region samtools-like region "chr:start-end"
+         */
         BcfReader(const std::string& fname_, const std::string& samples, const std::string& region) : fname(fname_)
         {
             fp = hts_open(fname.c_str(), "r");
@@ -716,15 +761,16 @@ namespace vcfpp
             }
         }
 
-        std::string fname;
-        bool isBcf;       // if the input file is bcf or vcf;
         BcfHeader header; // bcf header
+
     private:
         htsFile* fp = NULL;         // hts file
         hts_idx_t* hidx = NULL;     // hts index file
         tbx_t* tidx = NULL;         // .tbi .csi index file for vcf files
         hts_itr_t* itr = NULL;      // hts records iterator
         kstring_t s = {0, 0, NULL}; // kstring
+        std::string fname;
+        bool isBcf;                 // if the input file is bcf or vcf;
     };
 
     class BcfWriter
