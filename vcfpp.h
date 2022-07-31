@@ -42,7 +42,7 @@ namespace vcfpp
         {
         }
 
-        ~BcfHeader()
+        virtual ~BcfHeader()
         {
         }
 
@@ -75,6 +75,7 @@ namespace vcfpp
 
         inline void addLine(const std::string& str)
         {
+            ret = 0;
             ret = bcf_hdr_append(hdr, str.c_str());
             if (ret != 0)
                 throw std::runtime_error("could not add " + str + " to header\n");
@@ -83,7 +84,7 @@ namespace vcfpp
                 throw std::runtime_error("could not add " + str + " to header\n");
         }
 
-        inline void addSample(const std::string& sample)
+        inline void addSample(const std::string& sample) const
         {
             bcf_hdr_add_sample(hdr, sample.c_str());
             if (bcf_hdr_sync(hdr) != 0)
@@ -148,7 +149,6 @@ namespace vcfpp
 
         inline void setSamples(const std::string& samples)
         {
-
             ret = bcf_hdr_set_samples(hdr, samples.c_str(), 0);
             if (ret > 0)
             {
@@ -183,7 +183,7 @@ namespace vcfpp
         {
         }
 
-        ~BcfRecord()
+        virtual ~BcfRecord()
         {
         }
 
@@ -230,9 +230,6 @@ namespace vcfpp
         }
 
         // return a array for the requested field
-        // template <typename T, typename = typename std::enable_if<std::is_same<T,
-        // char>::value || std::is_same<T, int>::value || std::is_same<T,
-        // float>::value>::type>
         template <typename T, typename S = typename T::value_type>
         typename std::enable_if<std::is_same<T, std::vector<char>>::value || std::is_same<T, std::vector<int>>::value ||
                                     std::is_same<T, std::vector<float>>::value,
@@ -242,18 +239,18 @@ namespace vcfpp
             fmt = bcf_get_fmt(header->hdr, line, tag.c_str());
             shape1 = fmt->n;
             ndst = 0;
-            S* buf = NULL;
+            S* dst = NULL;
             int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
             if (bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_INT & 0xff))
-                ret = bcf_get_format_int32(header->hdr, line, tag.c_str(), &buf, &ndst);
+                ret = bcf_get_format_int32(header->hdr, line, tag.c_str(), &dst, &ndst);
             else if (bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_REAL & 0xff))
-                ret = bcf_get_format_float(header->hdr, line, tag.c_str(), &buf, &ndst);
+                ret = bcf_get_format_float(header->hdr, line, tag.c_str(), &dst, &ndst);
             else if (bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_STR & 0xff))
-                ret = bcf_get_format_char(header->hdr, line, tag.c_str(), &buf, &ndst);
+                ret = bcf_get_format_char(header->hdr, line, tag.c_str(), &dst, &ndst);
             if (ret >= 0)
             {
                 // user have to check if there is missing in the return v;
-                v = std::vector<S>(buf, buf + ret);
+                v = std::vector<S>(dst, dst + ret);
             }
             else
             {
@@ -267,19 +264,19 @@ namespace vcfpp
         getInfo(std::string tag, T& v)
         {
             info = bcf_get_info(header->hdr, line, tag.c_str());
-            S* buf = NULL;
+            S* dst = NULL;
             ndst = 0;
             ret = -1;
             if (info->type == BCF_BT_INT8 || info->type == BCF_BT_INT16 || info->type == BCF_BT_INT32)
             {
-                ret = bcf_get_info_int32(header->hdr, line, tag.c_str(), &buf, &ndst);
+                ret = bcf_get_info_int32(header->hdr, line, tag.c_str(), &dst, &ndst);
             }
             else if (info->type == BCF_BT_FLOAT)
             {
-                ret = bcf_get_info_float(header->hdr, line, tag.c_str(), &buf, &ndst);
+                ret = bcf_get_info_float(header->hdr, line, tag.c_str(), &dst, &ndst);
             }
             if (ret >= 0)
-                v = std::vector<S>(buf, buf + ret); // user have to check if there is missing in the return v;
+                v = std::vector<S>(dst, dst + ret); // user have to check if there is missing in the return v;
             else
                 throw std::runtime_error("couldn't parse the " + tag + " format of this variant.\n");
         }
@@ -612,7 +609,7 @@ namespace vcfpp
         }
 
 
-        ~BcfReader()
+        virtual ~BcfReader()
         {
             if (fp)
                 hts_close(fp);
@@ -724,7 +721,7 @@ namespace vcfpp
             fp = hts_open(fname.c_str(), mode.c_str());
         }
 
-        ~BcfWriter()
+        virtual ~BcfWriter()
         {
             hts_close(fp);
             bcf_destroy(b);
