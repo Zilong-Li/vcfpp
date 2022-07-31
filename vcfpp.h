@@ -471,16 +471,16 @@ namespace vcfpp
         inline bool isSNP() const
         {
             // REF has multiple allels
-            // if (strlen(line->d.allele[0]) > 1)
-            //     return false;
-            // for (int i = 1; i <= line->n_allele; i++)
-            // {
-            //     if ((std::string(line->d.allele[i]) != "A") || (std::string(line->d.allele[i])) != "C" ||
-            //         (std::string(line->d.allele[i])) != "G" || (std::string(line->d.allele[i]) != "T"))
-            //     {
-            //         return false;
-            //     }
-            // }
+            if (strlen(line->d.allele[0]) > 1)
+                return false;
+            for (int i = 1; i < line->n_allele; i++)
+            {
+                std::string snp(line->d.allele[i]);
+                if (!( snp == "A" || snp == "C"|| snp == "G"|| snp == "T"))
+                {
+                    return false;
+                }
+            }
             return true;
         }
 
@@ -561,9 +561,9 @@ namespace vcfpp
         bool isAllPhased = false;
         int nploidy = 0;
         int shape1 = 0;
-        std::shared_ptr<BcfHeader> header;
 
     private:
+        std::shared_ptr<BcfHeader> header;
         bcf1_t* line = bcf_init(); // current bcf record
         bcf_hdr_t* hdr_d;          // a dup header by bcf_hdr_dup(header->hdr)
         bcf_fmt_t* fmt = NULL;
