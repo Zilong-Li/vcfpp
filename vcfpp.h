@@ -468,15 +468,54 @@ namespace vcfpp
             return noneMissing;
         }
 
+        inline bool isSV() const
+        {
+            if (bcf_get_info(header->hdr, line, "SVTYPE") == NULL)
+                return false;
+            else
+                return true;
+        }
+
+        inline bool isIndel() const
+        {
+            // REF has multiple allels
+            if (REF().length() > 1 && !isSV())
+                return true;
+            for (int i = 1; i < line->n_allele; i++)
+            {
+                std::string alt(line->d.allele[i]);
+                if (alt == ".")
+                    return true;
+                if (alt.length() != REF().length() && !isSV())
+                    return true;
+            }
+            return false;
+        }
+
+        inline bool isDeletion() const
+        {
+            if (ALT().length() > 1)
+                return false;
+            if (!isIndel())
+                return false;
+            if (ALT().length() == 0)
+                return true;
+            else if (ALT()[0] == '.')
+                return true;
+            if (REF().length() > ALT().length())
+                return true;
+            return false;
+        }
+
         inline bool isSNP() const
         {
             // REF has multiple allels
-            if (strlen(line->d.allele[0]) > 1)
+            if (REF().length() > 1)
                 return false;
             for (int i = 1; i < line->n_allele; i++)
             {
                 std::string snp(line->d.allele[i]);
-                if (!( snp == "A" || snp == "C"|| snp == "G"|| snp == "T"))
+                if (!(snp == "A" || snp == "C" || snp == "G" || snp == "T"))
                 {
                     return false;
                 }
@@ -519,7 +558,8 @@ namespace vcfpp
             {
                 s += std::string(line->d.allele[i]) + ",";
             }
-            s.pop_back();
+            if (s.length() > 1)
+                s.pop_back();
             return s;
         }
 
