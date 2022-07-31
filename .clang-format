@@ -8,7 +8,6 @@ AllowShortIfStatementsOnASingleLine: 'false'
 AllowShortLoopsOnASingleLine: 'false'
 AlwaysBreakTemplateDeclarations: 'true'
 AlignAfterOpenBracket: true
-AlwaysBreakAfterDefinitionReturnType: All
 BreakBeforeBraces: Allman
 ColumnLimit: '120'
 IndentCaseLabels: 'true'

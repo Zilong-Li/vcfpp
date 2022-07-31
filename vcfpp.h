@@ -19,8 +19,7 @@ extern "C"
 
 namespace vcfpp
 {
-    bool
-    isEndWith(std::string const& s, std::string const& e)
+    bool isEndWith(std::string const& s, std::string const& e)
     {
         if (s.length() >= e.length())
         {
@@ -48,38 +47,33 @@ namespace vcfpp
         }
 
         // todo : check if the value is valid for vcf specification
-        inline void
-        AddInfo(const std::string& id, const std::string& number, const std::string& type,
-                const std::string& description)
+        inline void addInfo(const std::string& id, const std::string& number, const std::string& type,
+                            const std::string& description)
         {
-            AddLine("##INFO=<ID=" + id + ",Number=" + number + ",Type=" + type + ",Description=\"" + description +
+            addLine("##INFO=<ID=" + id + ",Number=" + number + ",Type=" + type + ",Description=\"" + description +
                     "\">");
         }
 
-        inline void
-        AddFormat(const std::string& id, const std::string& number, const std::string& type,
-                  const std::string& description)
+        inline void addFormat(const std::string& id, const std::string& number, const std::string& type,
+                              const std::string& description)
         {
-            AddLine("##FORMAT=<ID=" + id + ",Number=" + number + ",Type=" + type + ",Description=\"" + description +
+            addLine("##FORMAT=<ID=" + id + ",Number=" + number + ",Type=" + type + ",Description=\"" + description +
                     "\">");
         }
 
-        inline void
-        AddFilter(const std::string& id, const std::string& number, const std::string& type,
-                  const std::string& description)
+        inline void addFilter(const std::string& id, const std::string& number, const std::string& type,
+                              const std::string& description)
         {
-            AddLine("##FILTER=<ID=" + id + ",Number=" + number + ",Type=" + type + ",Description=\"" + description +
+            addLine("##FILTER=<ID=" + id + ",Number=" + number + ",Type=" + type + ",Description=\"" + description +
                     "\">");
         }
 
-        inline void
-        AddContig(const std::string& id)
+        inline void addContig(const std::string& id)
         {
-            AddLine("##contig=<ID=" + id + ">");
+            addLine("##contig=<ID=" + id + ">");
         }
 
-        inline void
-        AddLine(const std::string& str)
+        inline void addLine(const std::string& str)
         {
             ret = bcf_hdr_append(hdr, str.c_str());
             if (ret != 0)
@@ -89,8 +83,7 @@ namespace vcfpp
                 throw std::runtime_error("could not add " + str + " to header\n");
         }
 
-        inline void
-        AddSample(const std::string& sample)
+        inline void addSample(const std::string& sample)
         {
             bcf_hdr_add_sample(hdr, sample.c_str());
             if (bcf_hdr_sync(hdr) != 0)
@@ -99,8 +92,7 @@ namespace vcfpp
             }
         }
 
-        inline std::string
-        AsString() const
+        inline std::string asString() const
         {
             kstring_t s = {0, 0, NULL};          // kstring
             if (bcf_hdr_format(hdr, 0, &s) == 0) // append header string to s.s! append!
@@ -109,19 +101,17 @@ namespace vcfpp
                 throw std::runtime_error("failed to convert formatted header to string");
         }
 
-        std::vector<std::string>
-        GetSamples() const
+        std::vector<std::string> getSamples() const
         {
             std::vector<std::string> vec;
             for (int i = 0; i < bcf_hdr_nsamples(hdr); i++)
             {
-                vec.emplace_back(std::string(hdr->samples[i]));
+                vec.push_back(std::string(hdr->samples[i]));
             }
             return vec;
         }
 
-        std::vector<std::string>
-        GetSeqnames()
+        std::vector<std::string> getSeqnames()
         {
             const char** seqs = bcf_hdr_seqnames(hdr, &ret);
             if (ret == 0)
@@ -129,39 +119,34 @@ namespace vcfpp
             std::vector<std::string> vec;
             for (int i = 0; i < ret; i++)
             {
-                vec.emplace_back(std::string(seqs[i]));
+                vec.push_back(std::string(seqs[i]));
             }
             // TODO: return uninitialized vec may be undefined.
             return vec;
         }
 
-        inline void
-        RemoveContig(std::string tag) const
+        inline void removeContig(std::string tag) const
         {
 
             bcf_hdr_remove(hdr, BCF_HL_CTG, tag.c_str());
         }
 
-        inline void
-        RemoveInfo(std::string tag) const
+        inline void removeInfo(std::string tag) const
         {
             bcf_hdr_remove(hdr, BCF_HL_INFO, tag.c_str());
         }
 
-        inline void
-        RemoveFormat(std::string tag) const
+        inline void removeFormat(std::string tag) const
         {
             bcf_hdr_remove(hdr, BCF_HL_FMT, tag.c_str());
         }
 
-        inline void
-        RemoveFilter(std::string tag) const
+        inline void removeFilter(std::string tag) const
         {
             bcf_hdr_remove(hdr, BCF_HL_FLT, tag.c_str());
         }
 
-        inline void
-        SetSamples(const std::string& samples)
+        inline void setSamples(const std::string& samples)
         {
 
             ret = bcf_hdr_set_samples(hdr, samples.c_str(), 0);
@@ -175,8 +160,7 @@ namespace vcfpp
             }
         }
 
-        inline void
-        SetVersion(const std::string& version) const
+        inline void setVersion(const std::string& version) const
         {
             bcf_hdr_set_version(hdr, version.c_str());
         }
@@ -203,8 +187,10 @@ namespace vcfpp
         {
         }
 
-        std::string
-        AsString()
+        // TODO resetHeader()
+        void resetHeader();
+
+        std::string asString()
         {
             s.s = NULL;
             s.l = 0;
@@ -220,7 +206,7 @@ namespace vcfpp
                                     std::is_same<T, std::vector<char>>::value ||
                                     std::is_same<T, std::vector<int>>::value,
                                 bool>::type
-        GetGenotypes(T& gv)
+        getGenotypes(T& gv)
         {
             ndst = 0;
             ret = bcf_get_genotypes(header->hdr, line, &gts, &ndst);
@@ -251,7 +237,7 @@ namespace vcfpp
         typename std::enable_if<std::is_same<T, std::vector<char>>::value || std::is_same<T, std::vector<int>>::value ||
                                     std::is_same<T, std::vector<float>>::value,
                                 void>::type
-        GetFormat(std::string tag, T& v)
+        getFormat(std::string tag, T& v)
         {
             fmt = bcf_get_fmt(header->hdr, line, tag.c_str());
             shape1 = fmt->n;
@@ -278,7 +264,7 @@ namespace vcfpp
         template <typename T, typename S = typename T::value_type>
         typename std::enable_if<std::is_same<T, std::vector<int>>::value || std::is_same<T, std::vector<float>>::value,
                                 void>::type
-        GetInfo(std::string tag, T& v)
+        getInfo(std::string tag, T& v)
         {
             info = bcf_get_info(header->hdr, line, tag.c_str());
             S* buf = NULL;
@@ -301,7 +287,7 @@ namespace vcfpp
         template <typename T>
         typename std::enable_if<
             std::is_same<T, int>::value || std::is_same<T, float>::value || std::is_same<T, double>::value, void>::type
-        GetInfo(std::string tag, T& v)
+        getInfo(std::string tag, T& v)
         {
             info = bcf_get_info(header->hdr, line, tag.c_str());
             // scalar value
@@ -323,8 +309,7 @@ namespace vcfpp
         }
 
         template <typename T>
-        typename std::enable_if<std::is_same<T, std::string>::value, void>::type
-        GetInfo(std::string tag, T& v)
+        typename std::enable_if<std::is_same<T, std::string>::value, void>::type getInfo(std::string tag, T& v)
         {
             info = bcf_get_info(header->hdr, line, tag.c_str());
             if (info->type == BCF_BT_CHAR)
@@ -335,7 +320,7 @@ namespace vcfpp
 
         template <typename T>
         typename std::enable_if<std::is_same<T, int>::value || std::is_same<T, float>::value, void>::type
-        SetInfo(std::string tag, const T& v)
+        setInfo(std::string tag, const T& v)
         {
             ret = -1;
             // bcf_hrec_set_val
@@ -356,7 +341,7 @@ namespace vcfpp
         typename std::enable_if<std::is_same<T, std::string>::value || std::is_same<T, std::vector<int>>::value ||
                                     std::is_same<T, std::vector<float>>::value,
                                 void>::type
-        SetInfo(std::string tag, const T& v)
+        setInfo(std::string tag, const T& v)
         {
             ret = -1;
             // bcf_update_info_flag(header->hdr, line, tag.c_str(), NULL, 1);
@@ -374,8 +359,7 @@ namespace vcfpp
             }
         }
 
-        void
-        RemoveInfo(std::string tag)
+        void removeInfo(std::string tag)
         {
             ret = -1;
             int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
@@ -396,7 +380,7 @@ namespace vcfpp
                                     std::is_same<T, std::vector<char>>::value ||
                                     std::is_same<T, std::vector<int>>::value,
                                 bool>::type
-        SetGenotypes(const T& gv, bool phased = false)
+        setGenotypes(const T& gv, bool phased = false)
         {
             ndst = 0;
             ret = bcf_get_genotypes(header->hdr, line, &gts, &ndst);
@@ -426,7 +410,7 @@ namespace vcfpp
         typename std::enable_if<std::is_same<T, int32_t>::value || std::is_same<T, float>::value ||
                                     std::is_same<T, double>::value,
                                 void>::type
-        SetFormat(std::string tag, T v)
+        setFormat(std::string tag, T v)
         {
             ret = -1;
             float v2 = v;
@@ -444,7 +428,7 @@ namespace vcfpp
                                     std::is_same<T, std::vector<int>>::value ||
                                     std::is_same<T, std::vector<float>>::value,
                                 void>::type
-        SetFormat(std::string tag, const T& v)
+        setFormat(std::string tag, const T& v)
         {
             ret = -1;
             int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
@@ -458,8 +442,7 @@ namespace vcfpp
                 throw std::runtime_error("couldn't set format " + tag + " correctly.\n");
         }
 
-        void
-        AddLineFromString(const std::string& vcfline)
+        void addLineFromString(const std::string& vcfline)
         {
             std::vector<char> str(vcfline.begin(), vcfline.end());
             str.push_back('\0'); // don't forget string has no \0;
@@ -483,47 +466,56 @@ namespace vcfpp
             }
         }
 
-        inline bool
-        valueIsMissing() const
+        inline bool isNoneMissing() const
         {
-            return isValueMissing;
+            return noneMissing;
         }
 
-        inline std::string
-        CHROM() const
+        inline bool isSNP() const
+        {
+            // REF has multiple allels
+            // if (strlen(line->d.allele[0]) > 1)
+            //     return false;
+            // for (int i = 1; i <= line->n_allele; i++)
+            // {
+            //     if ((std::string(line->d.allele[i]) != "A") || (std::string(line->d.allele[i])) != "C" ||
+            //         (std::string(line->d.allele[i])) != "G" || (std::string(line->d.allele[i]) != "T"))
+            //     {
+            //         return false;
+            //     }
+            // }
+            return true;
+        }
+
+        inline std::string CHROM() const
         {
             return std::string(bcf_hdr_id2name(header->hdr, line->rid));
         }
 
         // 0-based
-        inline int64_t
-        POS() const
+        inline int64_t POS() const
         {
             return line->pos;
         }
 
         // 0-based start of all type of variants
-        inline int64_t
-        Start() const
+        inline int64_t Start() const
         {
             return line->pos;
         }
 
         // for SV variants
-        inline int64_t
-        End() const
+        inline int64_t End() const
         {
             return line->pos + line->rlen;
         }
 
-        inline std::string
-        REF() const
+        inline std::string REF() const
         {
             return std::string(line->d.allele[0]);
         }
 
-        inline std::string
-        ALT() const
+        inline std::string ALT() const
         {
             std::string s;
             for (int i = 1; i < line->n_allele; i++)
@@ -534,12 +526,11 @@ namespace vcfpp
             return s;
         }
 
-        inline float
-        QUAL()
+        inline float QUAL()
         {
             if (bcf_float_is_missing(line->qual))
             {
-                isValueMissing = true;
+                noneMissing = false;
                 return bcf_float_missing;
             }
             else
@@ -548,8 +539,7 @@ namespace vcfpp
             }
         }
 
-        inline std::string
-        FILTER()
+        inline std::string FILTER()
         {
             if (line->d.n_flt == 0)
             {
@@ -583,8 +573,8 @@ namespace vcfpp
         bcf_info_t* info = NULL;
         int32_t* gts = NULL;
         int ndst, ret;
-        kstring_t s = {0, 0, NULL};  // kstring
-        bool isValueMissing = false; // whenever parsing a tag have to reset this variable
+        kstring_t s = {0, 0, NULL}; // kstring
+        bool noneMissing = true;    // whenever parsing a tag have to reset this variable
     };
 
     class BcfReader
@@ -608,7 +598,7 @@ namespace vcfpp
         {
             fp = hts_open(fname.c_str(), "r");
             header.hdr = bcf_hdr_read(fp);
-            header.SetSamples(samples);
+            header.setSamples(samples);
             header.nsamples = bcf_hdr_nsamples(header.hdr);
         }
 
@@ -616,9 +606,9 @@ namespace vcfpp
         {
             fp = hts_open(fname.c_str(), "r");
             header.hdr = bcf_hdr_read(fp);
-            header.SetSamples(samples);
+            header.setSamples(samples);
             header.nsamples = bcf_hdr_nsamples(header.hdr);
-            SetRegion(region);
+            setRegion(region);
         }
 
 
@@ -630,16 +620,14 @@ namespace vcfpp
                 hts_itr_destroy(itr);
         }
 
-        inline int
-        SetThreads(int n)
+        inline int setThreads(int n)
         {
             return hts_set_threads(fp, n);
         }
 
         // 1. check and load index first
         // 2. query iterval region
-        void
-        SetRegion(const std::string& region)
+        void setRegion(const std::string& region)
         {
             if (isEndWith(fname, "bcf") || isEndWith(fname, "bcf.gz"))
             {
@@ -658,10 +646,9 @@ namespace vcfpp
         }
 
         // TODO reset current region. seek to the first record.
-        void Reset();
+        void reset();
 
-        bool
-        GetNextVariant(BcfRecord& r)
+        bool getNextVariant(BcfRecord& r)
         {
             int ret = -1;
             if (itr != NULL)
@@ -743,17 +730,15 @@ namespace vcfpp
             bcf_destroy(b);
         }
 
-        void
-        InitalHeader(std::string version = "VCF4.1")
+        void initalHeader(std::string version = "VCF4.1")
         {
             header = BcfHeader();
             header.hdr = bcf_hdr_init("w");
-            header.SetVersion(version);
+            header.setVersion(version);
         }
 
         // make a copy of given header
-        void
-        InitalHeader(const BcfHeader& h)
+        void initalHeader(const BcfHeader& h)
         {
             header = BcfHeader();
             header.hdr = bcf_hdr_dup(h.hdr); // make a copy of given header
@@ -762,11 +747,10 @@ namespace vcfpp
                 throw std::runtime_error("couldn't copy the header from another vcf.\n");
         }
 
-        void
-        WriteLine(const std::string& vcfline)
+        void writeLine(const std::string& vcfline)
         {
             if (!isHeaderWritten)
-                WriteHeader();
+                writeHeader();
             std::vector<char> line(vcfline.begin(), vcfline.end());
             line.push_back('\0'); // don't forget string has no \0;
             s.s = &line[0];
@@ -785,8 +769,7 @@ namespace vcfpp
                 throw std::runtime_error("error writing: " + vcfline + "\n");
         }
 
-        bool
-        WriteHeader()
+        bool writeHeader()
         {
             ret = bcf_hdr_write(fp, header.hdr);
             if (ret == 0)
@@ -795,11 +778,10 @@ namespace vcfpp
                 return false;
         }
 
-        inline bool
-        WriteRecord(BcfRecord& v)
+        inline bool writeRecord(BcfRecord& v)
         {
             if (!isHeaderWritten)
-                WriteHeader();
+                writeHeader();
             if (bcf_write(fp, v.header->hdr, v.line) < 0)
                 return false;
             else
