@@ -2,9 +2,12 @@
 .idea
 *.log
 a.*
+a-*
 .cache
 tmp/
 test.cpp
 *.bin
 compile_commands.json
 *.o
+*log
+*gz*

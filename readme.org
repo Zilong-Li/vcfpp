@@ -8,7 +8,6 @@
 Let's count the number of heterozygous sites for each sample in all records. The core is *just 10 lines*.
 
 #+begin_src C++
-#include <iostream>
 #include "vcfpp.h"
 using namespace std;
 using namespace vcfpp;
@@ -17,7 +16,7 @@ int main(int argc, char* argv[])
 {
     BcfReader vcf("ALL.chr22.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz");
     BcfRecord v(vcf.header);
-    vector<int> gt, hetsum(vcf.header.nsamples);
+    vector<int> gt, hetsum(vcf.nsamples);
     while (vcf.getNextVariant(v)) {
         if (v.isSNP()) {
             v.getGenotypes(gt);
@@ -26,6 +25,9 @@ int main(int argc, char* argv[])
             }
         }
     }
+    for (int i = 0; i < vcf.nsamples; i++) {
+        cout << vcf.SamplesName[i] << "\t" << hetsum[i] << endl;
+    }
     return 0;
 }
 #+end_src
@@ -33,12 +35,11 @@ int main(int argc, char* argv[])
 If you don't bother using *Eigen*, another header only high performance linear algebra library, here is the more expressive way.
 
 #+begin_src C++
-#include <iostream>
-#include <Eigen/Dense>
 #include "vcfpp.h"
+#include <Eigen/Dense>
 using namespace std;
-using namespace Eigen;
 using namespace vcfpp;
+using namespace Eigen;
 
 int main(int argc, char* argv[])
 {

@@ -7,12 +7,30 @@
  * @license     MIT
  * Copyright (C) 2022
  * The use of this code is governed by the LICENSE file.
- * @mainpage    something on the mainpage
  ******************************************************************************/
+
+/*! \mainpage The documentation of the single C++ file *vcfpp.h* for manipulating VCF/BCF
+ *
+ * \section intro_sec Introduction
+ *
+ * This project includes 4 abstract classes as interface to the basic htslib
+ *
+ * - vcfpp.BcfHeader keeps track of the header information of a VCF/BCF
+ * - vcfpp.BcfRecord keeps track of the variants information of a VCF/BCF
+ * - vcfpp.BcfReader streams in variants from VCF/BCF file or stdin
+ * - vcfpp.BcfWriter streams out variants to VCF/BCF file or stdout
+ *
+ * \section install_sec Installation
+ *
+ * Make sure you have htslib installed on your system and it is in your environment.
+ *
+ * etc...
+ */
 
 #ifndef VCFPP_H_
 #define VCFPP_H_
 
+#include <iostream>
 #include <memory>
 #include <string>
 #include <type_traits>
@@ -112,6 +130,12 @@ namespace vcfpp
 
         virtual ~BcfHeader()
         {
+        }
+
+        friend std::ostream& operator<<(std::ostream& out, const BcfHeader& h)
+        {
+            out << h.asString();
+            return out;
         }
 
         // TODO: check if the value is valid for vcf specification
@@ -235,13 +259,11 @@ namespace vcfpp
             bcf_hdr_set_version(hdr, version.c_str());
         }
 
-        inline int nSamples()
+        inline int nSamples() const
         {
-            nsamples = bcf_hdr_nsamples(hdr);
-            return nsamples;
+            return bcf_hdr_nsamples(hdr);
         }
 
-        int nsamples = 0;
 
     private:
         bcf_hdr_t* hdr = NULL;   // bcf header
@@ -267,15 +289,19 @@ namespace vcfpp
         {
         }
 
+        friend std::ostream& operator<<(std::ostream& out, const BcfRecord& v)
+        {
+            out << v.asString();
+            return out;
+        }
+
         // TODO resetHeader()
         void resetHeader();
 
         /** @brief return current variant as raw string */
-        std::string asString()
+        inline std::string asString() const
         {
-            s.s = NULL;
-            s.l = 0;
-            s.m = 0;
+            kstring_t s = {0, 0, NULL}; // kstring
             if (vcf_format(header->hdr, line, &s) == 0)
                 return std::string(s.s, s.l);
             else
@@ -285,6 +311,7 @@ namespace vcfpp
         /**
          * @param v valid T includes vector of bool, char, int type
          * @return bool
+         * @TODO add supllementary vector to indicate the genotype type: HOM, REF, UNKNOWN
          * */
         template <typename T>
         isValidGT<T> getGenotypes(T& v)
@@ -293,20 +320,27 @@ namespace vcfpp
             ret = bcf_get_genotypes(header->hdr, line, &gts, &ndst);
             if (ret <= 0)
                 return false; // gt not present
-            v.resize(ret);
-            nploidy = ret / header->nsamples;
+            v.resize(ret);    // ret is 1 if GT is just "." and only one sample
+            nploidy = ret / header->nSamples();
+            printf("n:%d, ploidy:%d\n", ret, nploidy);
             int i, j, k = 0, nphased = 0;
-            // gts = static_cast<int32_t*>(buf);
-            for (i = 0; i < header->nsamples; i++)
+            noneMissing = true;
+            for (i = 0; i < header->nSamples(); i++)
             {
                 for (j = 0; j < nploidy; j++)
-                { // only parse 0 and 1, ie max(nploidy)=2; other values 2,3... will be converted to 1;
+                {
+                    // TODO: right now only parse 0 and 1, ie max(nploidy)=2; other values 2,3... will be converted to
+                    // 1;
+                    if (bcf_gt_is_missing(gts[j + i * nploidy]))
+                        noneMissing = false;
                     v[k++] = bcf_gt_allele(gts[j + i * nploidy]) != 0;
                 }
                 nphased += (gts[1 + i * nploidy] & 1) == 1;
             }
-            if (nphased == header->nsamples)
+            if (nphased == header->nSamples())
                 isAllPhased = true;
+            else
+                isAllPhased = false;
             return true;
         }
 
@@ -494,9 +528,9 @@ namespace vcfpp
             if (ret <= 0)
                 return false; // gt not present
             assert(ret == v.size());
-            nploidy = ret / header->nsamples;
+            nploidy = ret / header->nSamples();
             int i, j, k;
-            for (i = 0; i < header->nsamples; i++)
+            for (i = 0; i < header->nSamples(); i++)
             {
                 for (j = 0; j < nploidy; j++)
                 {
@@ -561,10 +595,8 @@ namespace vcfpp
         void addLineFromString(const std::string& vcfline)
         {
             std::vector<char> str(vcfline.begin(), vcfline.end());
-            str.push_back('\0'); // don't forget string has no \0;
-            s.s = &str[0];
-            s.l = vcfline.length();
-            s.m = vcfline.length();
+            str.push_back('\0');        // don't forget string has no \0;
+            kstring_t s = {vcfline.length(), vcfline.length(), &str[0]}; // kstring
             ret = vcf_parse(&s, header->hdr, line);
             if (ret > 0)
                 throw std::runtime_error("error parsing: " + vcfline + "\n");
@@ -740,7 +772,7 @@ namespace vcfpp
 
         inline std::tuple<int, int> shapeOfQuery() const
         {
-            return std::make_tuple(header->nsamples, shape1);
+            return std::make_tuple(header->nSamples(), shape1);
         }
 
     private:
@@ -751,8 +783,7 @@ namespace vcfpp
         bcf_info_t* info = NULL;
         int32_t* gts = NULL;
         int ndst, ret;
-        kstring_t s = {0, 0, NULL}; // kstring
-        bool noneMissing = true;    // whenever parsing a tag have to reset this variable
+        bool noneMissing = true; // whenever parsing a tag have to reset this variable
         bool isAllPhased = false;
         int nploidy = 0;
         int shape1 = 0;
@@ -774,7 +805,8 @@ namespace vcfpp
         {
             fp = hts_open(fname.c_str(), "r");
             header.hdr = bcf_hdr_read(fp);
-            header.nsamples = bcf_hdr_nsamples(header.hdr);
+            nsamples = bcf_hdr_nsamples(header.hdr);
+            SamplesName = header.getSamples();
         }
 
         /**
@@ -791,7 +823,8 @@ namespace vcfpp
             fp = hts_open(fname.c_str(), "r");
             header.hdr = bcf_hdr_read(fp);
             header.setSamples(samples);
-            header.nsamples = bcf_hdr_nsamples(header.hdr);
+            nsamples = bcf_hdr_nsamples(header.hdr);
+            SamplesName = header.getSamples();
         }
 
         /**
@@ -809,8 +842,9 @@ namespace vcfpp
             fp = hts_open(fname.c_str(), "r");
             header.hdr = bcf_hdr_read(fp);
             header.setSamples(samples);
-            header.nsamples = bcf_hdr_nsamples(header.hdr);
+            nsamples = bcf_hdr_nsamples(header.hdr);
             setRegion(region);
+            SamplesName = header.getSamples();
         }
 
 
@@ -882,6 +916,8 @@ namespace vcfpp
         }
 
         BcfHeader header; // bcf header
+        int nsamples;
+        std::vector<std::string> SamplesName;
 
     private:
         htsFile* fp = NULL;         // hts file
@@ -949,7 +985,6 @@ namespace vcfpp
         {
             header = BcfHeader();
             header.hdr = bcf_hdr_dup(h.hdr); // make a copy of given header
-            header.nsamples = bcf_hdr_nsamples(header.hdr);
             if (header.hdr == NULL)
                 throw std::runtime_error("couldn't copy the header from another vcf.\n");
         }
@@ -996,7 +1031,6 @@ namespace vcfpp
         }
 
         BcfHeader header = BcfHeader(); // bcf header
-
 
     private:
         htsFile* fp = NULL; // hts file
