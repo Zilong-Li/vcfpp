@@ -5,7 +5,32 @@
 
 ** Calculate the heterozygosity rate
 
-Let's count the number of heterozygous sites for each sample in all records. The core is *just 10 lines* code.
+Let's count the number of heterozygous sites for each sample in all records. The core is *just 10 lines*.
+
+#+begin_src C++
+#include <iostream>
+#include "vcfpp.h"
+using namespace std;
+using namespace vcfpp;
+
+int main(int argc, char* argv[])
+{
+    BcfReader vcf("ALL.chr22.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz");
+    BcfRecord v(vcf.header);
+    vector<int> gt, hetsum(vcf.header.nsamples);
+    while (vcf.getNextVariant(v)) {
+        if (v.isSNP()) {
+            v.getGenotypes(gt);
+            for (int i = 0; i < gt.size()/2 ; i++) { // for diploidy
+                hetsum[i] += abs(gt[2 * i + 0] - gt[2 * i +1]);
+            }
+        }
+    }
+    return 0;
+}
+#+end_src
+
+If you don't bother using *Eigen*, another header only high performance linear algebra library, here is the more expressive way.
 
 #+begin_src C++
 #include <iostream>
@@ -21,11 +46,11 @@ int main(int argc, char* argv[])
     BcfRecord v(vcf.header);
     vector<int> gt;
     ArrayXi hetsum = ArrayXi::Zero(vcf.header.nsamples);
-    while (br.getNextVariant(v)) {
+    while (vcf.getNextVariant(v)) {
         if (v.isSNP()) {
             v.getGenotypes(gt);
             Map<ArrayX<int>> m(gt.data(), v.ploidy() , gt.size() / v.ploidy());
-            hetsum += (m.row(0) - m.row(1)).abs(); // for diplody
+            hetsum += (m.row(0) - m.row(1)).abs(); // for diploidy
         }
     }
     cout << hetsum << endl;
