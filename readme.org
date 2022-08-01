@@ -1,1 +1,34 @@
 #+TITLE: vcfpp: a single C++ file for manipulating VCF
+
+
+* Examples
+
+** Calculate the heterozygosity rate
+
+Let's count the number of heterozygous sites for each sample in all records. The core is *just 10 lines* code.
+
+#+begin_src C++
+#include <iostream>
+#include <Eigen/Dense>
+#include "vcfpp.h"
+using namespace std;
+using namespace Eigen;
+using namespace vcfpp;
+
+int main(int argc, char* argv[])
+{
+    BcfReader br("ALL.chr22.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz");
+    BcfRecord v(br.header);
+    vector<int> gt;
+    ArrayXi hetsum = ArrayXi::Zero(br.header.nsamples);
+    while (br.getNextVariant(v)) {
+        if (v.isSNP()) {
+            v.getGenotypes(gt);
+            Map<ArrayX<int>> m(gt.data(), v.ploidy() , gt.size() / v.ploidy());
+            hetsum += (m.row(0) - m.row(1)).abs(); // for diplody
+        }
+    }
+    cout << hetsum << endl;
+    return 0;
+}
+#+end_src

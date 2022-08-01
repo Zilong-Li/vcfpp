@@ -7,6 +7,7 @@
  * @license     MIT
  * Copyright (C) 2022
  * The use of this code is governed by the LICENSE file.
+ * @mainpage    something on the mainpage
  ******************************************************************************/
 
 #ifndef VCFPP_H_
@@ -38,6 +39,11 @@ namespace vcfpp
         }
     };
 
+    /**
+     * @class BcfHeader
+     * @brief Object represents the header in VCF
+     * @note  nothing important
+     **/
     class BcfHeader
     {
         friend class BcfRecord;
@@ -187,6 +193,11 @@ namespace vcfpp
         bcf_hrec_t* hrec = NULL; // populate header
     };
 
+    /**
+     * @class BcfRecord
+     * @brief Object represents a record in VCF
+     * @note  nothing important
+     **/
     class BcfRecord
     {
         friend class BcfReader;
@@ -642,15 +653,19 @@ namespace vcfpp
         int shape1 = 0;
     };
 
+    /**
+     * @class BcfReader
+     * @brief Stream in variants from vcf/bcf file or stdin
+     * @note  nothing important
+     **/
     class BcfReader
     {
     public:
-
         /**
          *  @brief construct a vcf/bcf reader from file.
          *  @param fname_   the input vcf/bcf with suffix vcf(.gz) or bcf(.gz)
          */
-        BcfReader(const std::string& fname_) : fname(fname_), header(BcfHeader())
+        BcfReader(const std::string& fname_) : fname(fname_)
         {
             fp = hts_open(fname.c_str(), "r");
             header.hdr = bcf_hdr_read(fp);
@@ -770,12 +785,21 @@ namespace vcfpp
         hts_itr_t* itr = NULL;      // hts records iterator
         kstring_t s = {0, 0, NULL}; // kstring
         std::string fname;
-        bool isBcf;                 // if the input file is bcf or vcf;
+        bool isBcf; // if the input file is bcf or vcf;
     };
 
+    /**
+     * @class BcfWriter
+     * @brief Stream out variants to vcf/bcf file or stdout
+     * @note  nothing important
+     **/
     class BcfWriter
     {
     public:
+        /**
+         * @brief          Open VCF/BCF file for writing. The format is infered from file's suffix
+         * @param fname    The file name or "-" for stdin/stdout. For indexed files
+         */
         BcfWriter(const std::string& fname_) : fname(fname_)
         {
             std::string mode{"w"};
@@ -788,20 +812,15 @@ namespace vcfpp
             fp = hts_open(fname.c_str(), mode.c_str());
         }
 
-        /*!
-          @abstract       Open a sequence data (SAM/BAM/CRAM) or variant data
-          (VCF/BCF) or possibly-compressed textual line-orientated file
-          @param fn       The file name or "-" for stdin/stdout. For indexed files
-                          with a non-standard naming, the file name can include the
-                          name of the index file delimited with HTS_IDX_DELIM
-          @param mode     Mode matching / [rwa][bcefFguxz0-9]* /
-          @example
-              [rw]b  .. compressed BCF, BAM, FAI
-              [rw]bu .. uncompressed BCF
-              [rw]z  .. compressed VCF
-              [rw]   .. uncompressed VCF
-        */
-
+        /**
+         * @brief          Open VCF/BCF file for writing using given mode
+         * @param fname    The file name or "-" for stdin/stdout. For indexed files
+         * @param mode     Mode matching \n
+         *                 [w]b  .. compressed BCF \n
+         *                 [w]bu .. uncompressed BCF \n
+         *                 [w]z  .. compressed VCF \n
+         *                 [w]   .. uncompressed VCF
+         */
         BcfWriter(const std::string& fname_, const std::string& mode) : fname(fname_)
         {
             fp = hts_open(fname.c_str(), mode.c_str());
@@ -871,7 +890,7 @@ namespace vcfpp
                 return true;
         }
 
-        BcfHeader header; // bcf header
+        BcfHeader header = BcfHeader(); // bcf header
 
 
     private:
