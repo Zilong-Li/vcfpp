@@ -17,10 +17,10 @@ using namespace vcfpp;
 
 int main(int argc, char* argv[])
 {
-    BcfReader br("ALL.chr22.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz");
-    BcfRecord v(br.header);
+    BcfReader vcf("ALL.chr22.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz");
+    BcfRecord v(vcf.header);
     vector<int> gt;
-    ArrayXi hetsum = ArrayXi::Zero(br.header.nsamples);
+    ArrayXi hetsum = ArrayXi::Zero(vcf.header.nsamples);
     while (br.getNextVariant(v)) {
         if (v.isSNP()) {
             v.getGenotypes(gt);

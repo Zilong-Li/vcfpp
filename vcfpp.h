@@ -27,6 +27,22 @@ extern "C"
 
 namespace vcfpp
 {
+
+    template <typename T>
+    typename std::enable_if<
+        std::is_same<T, int>::value || std::is_same<T, float>::value, bool>::type
+    isMissing(T const& v)
+    {
+        if (std::is_same<T, float>::value)
+        {
+            return bcf_float_is_missing(v);
+        }
+        else if (std::is_same<T, int>::value)
+        {
+            return bcf_int32_missing(v);
+        }
+    }
+
     bool isEndWith(std::string const& s, std::string const& e)
     {
         if (s.length() >= e.length())
@@ -226,6 +242,10 @@ namespace vcfpp
                 throw std::runtime_error("couldn't format current record into a string.\n");
         }
 
+        /**
+         * @params T vector of bool, char, int type
+         * @return bool
+         * */
         template <class T>
         typename std::enable_if<std::is_same<T, std::vector<bool>>::value ||
                                     std::is_same<T, std::vector<char>>::value ||
