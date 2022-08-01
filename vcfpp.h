@@ -27,11 +27,15 @@ extern "C"
 
 namespace vcfpp
 {
+    template <typename T>
+    using isIntOrFloat = typename std::enable_if<
+        std::is_same<T, int>::value || std::is_same<T, float>::value || std::is_same<T, double>::value, bool>::type;
 
     template <typename T>
-    typename std::enable_if<
-        std::is_same<T, int>::value || std::is_same<T, float>::value, bool>::type
-    isMissing(T const& v)
+    using isString = typename std::enable_if<std::is_same<T, std::string>::value, void>::type;
+
+    template <typename T>
+    isIntOrFloat<T> isMissing(T const& v)
     {
         if (std::is_same<T, float>::value)
         {
@@ -242,22 +246,23 @@ namespace vcfpp
                 throw std::runtime_error("couldn't format current record into a string.\n");
         }
 
+        template <typename T>
+        using isValidGT = typename std::enable_if<std::is_same<T, std::vector<bool>>::value ||
+                                                      std::is_same<T, std::vector<char>>::value ||
+                                                      std::is_same<T, std::vector<int>>::value,
+                                                  bool>::type;
         /**
-         * @params T vector of bool, char, int type
+         * @param v valid T includes vector of bool, char, int type
          * @return bool
          * */
-        template <class T>
-        typename std::enable_if<std::is_same<T, std::vector<bool>>::value ||
-                                    std::is_same<T, std::vector<char>>::value ||
-                                    std::is_same<T, std::vector<int>>::value,
-                                bool>::type
-        getGenotypes(T& gv)
+        template <typename T>
+        isValidGT<T> getGenotypes(T& v)
         {
             ndst = 0;
             ret = bcf_get_genotypes(header->hdr, line, &gts, &ndst);
             if (ret <= 0)
-                return 0; // gt not present
-            gv.resize(ret);
+                return false; // gt not present
+            v.resize(ret);
             nploidy = ret / header->nsamples;
             int i, j, k = 0, nphased = 0;
             // gts = static_cast<int32_t*>(buf);
@@ -265,21 +270,23 @@ namespace vcfpp
             {
                 for (j = 0; j < nploidy; j++)
                 { // only parse 0 and 1, ie max(nploidy)=2; other values 2,3... will be converted to 1;
-                    gv[k++] = bcf_gt_allele(gts[j + i * nploidy]) != 0;
+                    v[k++] = bcf_gt_allele(gts[j + i * nploidy]) != 0;
                 }
                 nphased += (gts[1 + i * nploidy] & 1) == 1;
             }
             if (nphased == header->nsamples)
                 isAllPhased = true;
-            return 1;
+            return true;
         }
 
+        template <typename T>
+        using isFormatVector = typename std::enable_if<std::is_same<T, std::vector<float>>::value ||
+                                                           std::is_same<T, std::vector<char>>::value ||
+                                                           std::is_same<T, std::vector<int>>::value,
+                                                       bool>::type;
         // return a array for the requested field
         template <typename T, typename S = typename T::value_type>
-        typename std::enable_if<std::is_same<T, std::vector<char>>::value || std::is_same<T, std::vector<int>>::value ||
-                                    std::is_same<T, std::vector<float>>::value,
-                                void>::type
-        getFormat(std::string tag, T& v)
+        isFormatVector<T> getFormat(std::string tag, T& v)
         {
             fmt = bcf_get_fmt(header->hdr, line, tag.c_str());
             shape1 = fmt->n;
@@ -296,6 +303,7 @@ namespace vcfpp
             {
                 // user have to check if there is missing in the return v;
                 v = std::vector<S>(dst, dst + ret);
+                return true;
             }
             else
             {
@@ -303,10 +311,12 @@ namespace vcfpp
             }
         }
 
+        template <typename T>
+        using isInfoVector = typename std::enable_if<
+            std::is_same<T, std::vector<int>>::value || std::is_same<T, std::vector<float>>::value, bool>::type;
+
         template <typename T, typename S = typename T::value_type>
-        typename std::enable_if<std::is_same<T, std::vector<int>>::value || std::is_same<T, std::vector<float>>::value,
-                                void>::type
-        getInfo(std::string tag, T& v)
+        isInfoVector<T> getInfo(std::string tag, T& v)
         {
             info = bcf_get_info(header->hdr, line, tag.c_str());
             S* dst = NULL;
@@ -324,12 +334,11 @@ namespace vcfpp
                 v = std::vector<S>(dst, dst + ret); // user have to check if there is missing in the return v;
             else
                 throw std::runtime_error("couldn't parse the " + tag + " format of this variant.\n");
+            return true;
         }
 
         template <typename T>
-        typename std::enable_if<
-            std::is_same<T, int>::value || std::is_same<T, float>::value || std::is_same<T, double>::value, void>::type
-        getInfo(std::string tag, T& v)
+        isIntOrFloat<T> getInfo(std::string tag, T& v)
         {
             info = bcf_get_info(header->hdr, line, tag.c_str());
             // scalar value
@@ -351,7 +360,7 @@ namespace vcfpp
         }
 
         template <typename T>
-        typename std::enable_if<std::is_same<T, std::string>::value, void>::type getInfo(std::string tag, T& v)
+        isString<T> getInfo(std::string tag, T& v)
         {
             info = bcf_get_info(header->hdr, line, tag.c_str());
             if (info->type == BCF_BT_CHAR)
@@ -361,8 +370,7 @@ namespace vcfpp
         }
 
         template <typename T>
-        typename std::enable_if<std::is_same<T, int>::value || std::is_same<T, float>::value, void>::type
-        setInfo(std::string tag, const T& v)
+        isIntOrFloat<T> setInfo(std::string tag, const T& v)
         {
             ret = -1;
             // bcf_hrec_set_val
@@ -371,19 +379,28 @@ namespace vcfpp
             if (bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_INT & 0xff))
                 ret = bcf_update_info_int32(header->hdr, line, tag.c_str(), &v, 1);
             else if (bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_REAL & 0xff))
-                ret = bcf_update_info_float(header->hdr, line, tag.c_str(), &v, 1);
+            {
+                float v2 = static_cast<float>(v);
+                ret = bcf_update_info_float(header->hdr, line, tag.c_str(), &v2, 1);
+            }
             if (ret < 0)
             {
                 throw std::runtime_error("couldn't set " + tag +
                                          " for this variant.\nplease add the tag in header first.\n");
             }
+            else
+            {
+                return true;
+            }
         }
+        template <typename T>
+        using isValidInfo =
+            typename std::enable_if<std::is_same<T, std::string>::value || std::is_same<T, std::vector<int>>::value ||
+                                        std::is_same<T, std::vector<float>>::value,
+                                    bool>::type;
 
         template <typename T>
-        typename std::enable_if<std::is_same<T, std::string>::value || std::is_same<T, std::vector<int>>::value ||
-                                    std::is_same<T, std::vector<float>>::value,
-                                void>::type
-        setInfo(std::string tag, const T& v)
+        isValidInfo<T> setInfo(std::string tag, const T& v)
         {
             ret = -1;
             // bcf_update_info_flag(header->hdr, line, tag.c_str(), NULL, 1);
@@ -395,10 +412,10 @@ namespace vcfpp
             else if (bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_STR & 0xff))
                 ret = bcf_update_info_string(header->hdr, line, tag.c_str(), v.data());
             if (ret < 0)
-            {
                 throw std::runtime_error("couldn't set " + tag +
                                          " for this variant.\nplease add the tag in header first.\n");
-            }
+            else
+                return true;
         }
 
         void removeInfo(std::string tag)
@@ -418,11 +435,7 @@ namespace vcfpp
         }
 
         template <class T>
-        typename std::enable_if<std::is_same<T, std::vector<bool>>::value ||
-                                    std::is_same<T, std::vector<char>>::value ||
-                                    std::is_same<T, std::vector<int>>::value,
-                                bool>::type
-        setGenotypes(const T& gv, bool phased = false)
+        isValidGT<T> setGenotypes(const T& gv, bool phased = false)
         {
             ndst = 0;
             ret = bcf_get_genotypes(header->hdr, line, &gts, &ndst);
@@ -449,10 +462,7 @@ namespace vcfpp
         }
 
         template <typename T>
-        typename std::enable_if<std::is_same<T, int32_t>::value || std::is_same<T, float>::value ||
-                                    std::is_same<T, double>::value,
-                                void>::type
-        setFormat(std::string tag, T v)
+        isIntOrFloat<T> setFormat(std::string tag, T v)
         {
             ret = -1;
             float v2 = v;
@@ -463,14 +473,17 @@ namespace vcfpp
                 ret = bcf_update_format_float(header->hdr, line, tag.c_str(), &v2, 1);
             if (ret < 0)
                 throw std::runtime_error("couldn't set format " + tag + " correctly.\n");
+            return true;
         }
 
         template <typename T>
-        typename std::enable_if<std::is_same<T, std::string>::value || std::is_same<T, std::vector<char>>::value ||
-                                    std::is_same<T, std::vector<int>>::value ||
-                                    std::is_same<T, std::vector<float>>::value,
-                                void>::type
-        setFormat(std::string tag, const T& v)
+        using isValidFMT =
+            typename std::enable_if<std::is_same<T, std::string>::value || std::is_same<T, std::vector<char>>::value ||
+                                        std::is_same<T, std::vector<int>>::value ||
+                                        std::is_same<T, std::vector<float>>::value,
+                                    bool>::type;
+        template <typename T>
+        isValidFMT<T> setFormat(std::string tag, const T& v)
         {
             ret = -1;
             int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
@@ -482,6 +495,7 @@ namespace vcfpp
                 ret = bcf_update_format_float(header->hdr, line, tag.c_str(), v.data(), v.size());
             if (ret < 0)
                 throw std::runtime_error("couldn't set format " + tag + " correctly.\n");
+            return true;
         }
 
         void addLineFromString(const std::string& vcfline)
