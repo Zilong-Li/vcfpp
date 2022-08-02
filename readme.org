@@ -32,7 +32,7 @@ int main(int argc, char* argv[])
 }
 #+end_src
 
-If you don't bother using *Eigen*, another header only high performance linear algebra library, here is the more expressive way.
+If you don't bother using *Eigen*, another header only high performance linear algebra library, here is the more expressive way. Also, we'll need the library to run PCA with VCF in another example.
 
 #+begin_src C++
 #include "vcfpp.h"

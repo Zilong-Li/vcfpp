@@ -41,50 +41,40 @@ extern "C"
 {
 #include <htslib/tbx.h>
 #include <htslib/vcf.h>
+#include <htslib/vcfutils.h>
 }
 
 namespace vcfpp
 {
     template <typename T>
-    using isValidFMT =
-        typename std::enable_if<std::is_same<T, std::string>::value || std::is_same<T, std::vector<char>>::value ||
-                                    std::is_same<T, std::vector<int>>::value ||
-                                    std::is_same<T, std::vector<float>>::value,
-                                bool>::type;
+    using isValidFMT = typename std::enable_if<std::is_same<T, std::string>::value || std::is_same<T, std::vector<char>>::value ||
+                                                   std::is_same<T, std::vector<int>>::value || std::is_same<T, std::vector<float>>::value,
+                                               bool>::type;
 
     template <typename T>
     using isValidInfo =
-        typename std::enable_if<std::is_same<T, std::string>::value || std::is_same<T, std::vector<int>>::value ||
-                                    std::is_same<T, std::vector<float>>::value,
+        typename std::enable_if<std::is_same<T, std::string>::value || std::is_same<T, std::vector<int>>::value || std::is_same<T, std::vector<float>>::value,
                                 bool>::type;
 
     template <typename T>
-    using isIntOrFloat = typename std::enable_if<
-        std::is_same<T, int>::value || std::is_same<T, float>::value || std::is_same<T, double>::value, bool>::type;
+    using isIntOrFloat = typename std::enable_if<std::is_same<T, int>::value || std::is_same<T, float>::value || std::is_same<T, double>::value, bool>::type;
 
     template <typename T>
-    using isInfoVector =
-        typename std::enable_if<std::is_same<T, std::vector<int>>::value || std::is_same<T, std::vector<float>>::value,
-                                bool>::type;
+    using isInfoVector = typename std::enable_if<std::is_same<T, std::vector<int>>::value || std::is_same<T, std::vector<float>>::value, bool>::type;
 
     template <typename T>
-    using isIntOrFloat = typename std::enable_if<
-        std::is_same<T, int>::value || std::is_same<T, float>::value || std::is_same<T, double>::value, bool>::type;
+    using isIntOrFloat = typename std::enable_if<std::is_same<T, int>::value || std::is_same<T, float>::value || std::is_same<T, double>::value, bool>::type;
 
     template <typename T>
     using isString = typename std::enable_if<std::is_same<T, std::string>::value, void>::type;
 
     template <typename T>
-    using isValidGT = typename std::enable_if<std::is_same<T, std::vector<bool>>::value ||
-                                                  std::is_same<T, std::vector<char>>::value ||
-                                                  std::is_same<T, std::vector<int>>::value,
-                                              bool>::type;
+    using isValidGT = typename std::enable_if<
+        std::is_same<T, std::vector<bool>>::value || std::is_same<T, std::vector<char>>::value || std::is_same<T, std::vector<int>>::value, bool>::type;
 
     template <typename T>
-    using isFormatVector = typename std::enable_if<std::is_same<T, std::vector<float>>::value ||
-                                                       std::is_same<T, std::vector<char>>::value ||
-                                                       std::is_same<T, std::vector<int>>::value,
-                                                   bool>::type;
+    using isFormatVector = typename std::enable_if<
+        std::is_same<T, std::vector<float>>::value || std::is_same<T, std::vector<char>>::value || std::is_same<T, std::vector<int>>::value, bool>::type;
 
 
     template <typename T>
@@ -139,25 +129,19 @@ namespace vcfpp
         }
 
         // TODO: check if the value is valid for vcf specification
-        inline void addInfo(const std::string& id, const std::string& number, const std::string& type,
-                            const std::string& description)
+        inline void addInfo(const std::string& id, const std::string& number, const std::string& type, const std::string& description)
         {
-            addLine("##INFO=<ID=" + id + ",Number=" + number + ",Type=" + type + ",Description=\"" + description +
-                    "\">");
+            addLine("##INFO=<ID=" + id + ",Number=" + number + ",Type=" + type + ",Description=\"" + description + "\">");
         }
 
-        inline void addFormat(const std::string& id, const std::string& number, const std::string& type,
-                              const std::string& description)
+        inline void addFormat(const std::string& id, const std::string& number, const std::string& type, const std::string& description)
         {
-            addLine("##FORMAT=<ID=" + id + ",Number=" + number + ",Type=" + type + ",Description=\"" + description +
-                    "\">");
+            addLine("##FORMAT=<ID=" + id + ",Number=" + number + ",Type=" + type + ",Description=\"" + description + "\">");
         }
 
-        inline void addFilter(const std::string& id, const std::string& number, const std::string& type,
-                              const std::string& description)
+        inline void addFilter(const std::string& id, const std::string& number, const std::string& type, const std::string& description)
         {
-            addLine("##FILTER=<ID=" + id + ",Number=" + number + ",Type=" + type + ",Description=\"" + description +
-                    "\">");
+            addLine("##FILTER=<ID=" + id + ",Number=" + number + ",Type=" + type + ",Description=\"" + description + "\">");
         }
 
         inline void addContig(const std::string& id)
@@ -281,8 +265,10 @@ namespace vcfpp
         friend class BcfWriter;
 
     public:
-        BcfRecord(BcfHeader& h_) : header(std::make_shared<BcfHeader>(h_))
+        BcfRecord(BcfHeader& h) : header(std::make_shared<BcfHeader>(h))
         {
+            nsamples = header->nSamples();
+            typeOfGT.resize(nsamples);
         }
 
         virtual ~BcfRecord()
@@ -317,27 +303,55 @@ namespace vcfpp
         isValidGT<T> getGenotypes(T& v)
         {
             ndst = 0;
+            // note: ret is 1 if GT is just "." and only one sample
+            //       if ret == nsamples then haploidy
             ret = bcf_get_genotypes(header->hdr, line, &gts, &ndst);
-            if (ret <= 0)
+            if (ret <= 1)
                 return false; // gt not present
-            v.resize(ret);    // ret is 1 if GT is just "." and only one sample
-            nploidy = ret / header->nSamples();
-            printf("n:%d, ploidy:%d\n", ret, nploidy);
-            int i, j, k = 0, nphased = 0;
-            noneMissing = true;
-            for (i = 0; i < header->nSamples(); i++)
+            // if nploidy is not set manually. find the max nploidy using the first variant (eg. 2) resize v as max(nploidy) * nsamples which is ret
+            if (nploidy == 0)
             {
-                for (j = 0; j < nploidy; j++)
+                v.resize(ret);
+                nploidy = ret / nsamples;
+            }
+            else if (ret != nploidy * nsamples)
+            {
+                v.resize(ret);
+                nploidy = ret / nsamples;
+            }
+            else
+            {
+                v.resize(nploidy * nsamples); // if nploidy is set
+            }
+            // work with nploidy == 1, haploid?
+            // printf("n:%d, ploidy:%d\n", ret, nploidy);
+            int i, j, nphased = 0;
+            noneMissing = true;
+            fmt = bcf_get_fmt(header->hdr, line, "GT");
+            int nploidy_cur = ret / nsamples; // requires nploidy_cur <= nploidy
+            for (i = 0; i < nsamples; i++)
+            {
+                // check and fill typeOfGT; only supports SNPs now. check vcfstats.c for inspiration
+                typeOfGT[i] = bcf_gt_type(fmt, i, NULL, NULL);
+                // printf("type is %i\n", typeOfGT[i]);
+
+                if (typeOfGT[i] == GT_UNKN)
+                {
+                    noneMissing = false;
+                    for (j = 0; j < nploidy; j++)
+                        v[i * nploidy + j] = 0;
+                    continue;
+                }
+
+                for (j = 0; j < nploidy_cur; j++)
                 {
                     // TODO: right now only parse 0 and 1, ie max(nploidy)=2; other values 2,3... will be converted to
                     // 1;
-                    if (bcf_gt_is_missing(gts[j + i * nploidy]))
-                        noneMissing = false;
-                    v[k++] = bcf_gt_allele(gts[j + i * nploidy]) != 0;
+                    v[i * nploidy + j] = bcf_gt_allele(gts[j + i * nploidy_cur]) != 0;
                 }
-                nphased += (gts[1 + i * nploidy] & 1) == 1;
+                nphased += (gts[1 + i * nploidy_cur] & 1) == 1;
             }
-            if (nphased == header->nSamples())
+            if (nphased == nsamples)
                 isAllPhased = true;
             else
                 isAllPhased = false;
@@ -465,8 +479,7 @@ namespace vcfpp
             }
             if (ret < 0)
             {
-                throw std::runtime_error("couldn't set " + tag +
-                                         " for this variant.\nplease add the tag in header first.\n");
+                throw std::runtime_error("couldn't set " + tag + " for this variant.\nplease add the tag in header first.\n");
             }
             else
             {
@@ -491,8 +504,7 @@ namespace vcfpp
             else if (bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_STR & 0xff))
                 ret = bcf_update_info_string(header->hdr, line, tag.c_str(), v.data());
             if (ret < 0)
-                throw std::runtime_error("couldn't set " + tag +
-                                         " for this variant.\nplease add the tag in header first.\n");
+                throw std::runtime_error("couldn't set " + tag + " for this variant.\nplease add the tag in header first.\n");
             else
                 return true;
         }
@@ -523,14 +535,15 @@ namespace vcfpp
         template <class T>
         isValidGT<T> setGenotypes(const T& v, bool phased = false)
         {
+            // bcf_gt_type
             ndst = 0;
             ret = bcf_get_genotypes(header->hdr, line, &gts, &ndst);
             if (ret <= 0)
                 return false; // gt not present
             assert(ret == v.size());
-            nploidy = ret / header->nSamples();
+            nploidy = ret / nsamples;
             int i, j, k;
-            for (i = 0; i < header->nSamples(); i++)
+            for (i = 0; i < nsamples; i++)
             {
                 for (j = 0; j < nploidy; j++)
                 {
@@ -595,7 +608,7 @@ namespace vcfpp
         void addLineFromString(const std::string& vcfline)
         {
             std::vector<char> str(vcfline.begin(), vcfline.end());
-            str.push_back('\0');        // don't forget string has no \0;
+            str.push_back('\0');                                         // don't forget string has no \0;
             kstring_t s = {vcfline.length(), vcfline.length(), &str[0]}; // kstring
             ret = vcf_parse(&s, header->hdr, line);
             if (ret > 0)
@@ -772,8 +785,20 @@ namespace vcfpp
 
         inline std::tuple<int, int> shapeOfQuery() const
         {
-            return std::make_tuple(header->nSamples(), shape1);
+            return std::make_tuple(nsamples, shape1);
         }
+
+        /**
+         * #define GT_HOM_RR 0 // note: the actual value of GT_* matters, used in dosage r2 calculation
+         * #define GT_HOM_AA 1
+         * #define GT_HET_RA 2
+         * #define GT_HET_AA 3
+         * #define GT_HAPL_R 4
+         * #define GT_HAPL_A 5
+         * #define GT_UNKN   6
+         * */
+        std::vector<int8_t> typeOfGT; //
+        int nploidy = 0;
 
     private:
         std::shared_ptr<BcfHeader> header;
@@ -782,10 +807,9 @@ namespace vcfpp
         bcf_fmt_t* fmt = NULL;
         bcf_info_t* info = NULL;
         int32_t* gts = NULL;
-        int ndst, ret;
+        int ndst, ret, nsamples;
         bool noneMissing = true; // whenever parsing a tag have to reset this variable
         bool isAllPhased = false;
-        int nploidy = 0;
         int shape1 = 0;
     };
 

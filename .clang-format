@@ -9,7 +9,7 @@ AllowShortLoopsOnASingleLine: 'false'
 AlwaysBreakTemplateDeclarations: 'true'
 AlignAfterOpenBracket: true
 BreakBeforeBraces: Allman
-ColumnLimit: '120'
+ColumnLimit: '160'
 IndentCaseLabels: 'true'
 IndentWidth: '4'
 Language: Cpp
