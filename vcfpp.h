@@ -24,6 +24,8 @@
  *
  * Make sure you have htslib installed on your system and it is in your environment.
  *
+ * \copyright Copyright (C) 2022 Zilong Li . This project is released under the MIT license.
+ *
  * etc...
  */
 
@@ -269,6 +271,7 @@ namespace vcfpp
         {
             nsamples = header->nSamples();
             typeOfGT.resize(nsamples);
+            gtPhase.resize(nsamples);
         }
 
         virtual ~BcfRecord()
@@ -349,7 +352,11 @@ namespace vcfpp
                     // 1;
                     v[i * nploidy + j] = bcf_gt_allele(gts[j + i * nploidy_cur]) != 0;
                 }
-                nphased += (gts[1 + i * nploidy_cur] & 1) == 1;
+                if (nploidy == 2)
+                {
+                    gtPhase[i] = (gts[1 + i * nploidy_cur] & 1) == 1;
+                    nphased += gtPhase[i];
+                }
             }
             if (nphased == nsamples)
                 isAllPhased = true;
@@ -381,6 +388,32 @@ namespace vcfpp
             {
                 // user have to check if there is missing in the return v;
                 v = std::vector<S>(dst, dst + ret);
+                return true;
+            }
+            else
+            {
+                throw std::runtime_error("couldn't parse the " + tag + " format of this variant.\n");
+            }
+        }
+
+        bool getFormat(std::string tag, std::vector<std::string>& v)
+        {
+            fmt = bcf_get_fmt(header->hdr, line, tag.c_str());
+            shape1 = fmt->n;
+            // if ndst < (fmt->n+1)*nsmpl; then realloc is involved
+            ret = -1, ndst = 0;
+            char** dst = NULL;
+            int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
+            if (bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_STR & 0xff))
+                ret = bcf_get_format_string(header->hdr, line, tag.c_str(), &dst, &ndst);
+            if (ret > 0)
+            {
+                v.clear();
+                for (int i = 0; i < nsamples; i++)
+                {
+                    // Ugly: GT field is considered to be a string by the VCF header but BCF represents it as INT.
+                    v.emplace_back(dst[i]);
+                };
                 return true;
             }
             else
@@ -436,6 +469,7 @@ namespace vcfpp
                 {
                     v = info->v1.f;
                 }
+                return true;
             }
             else
             {
@@ -533,7 +567,7 @@ namespace vcfpp
          * @return bool
          * */
         template <class T>
-        isValidGT<T> setGenotypes(const T& v, bool phased = false)
+        isValidGT<T> setGenotypes(const T& v)
         {
             // bcf_gt_type
             ndst = 0;
@@ -548,7 +582,7 @@ namespace vcfpp
                 for (j = 0; j < nploidy; j++)
                 {
                     k = i * nploidy + j;
-                    if (phased)
+                    if (gtPhase[i])
                         gts[k] = bcf_gt_phased(v[k]);
                     else
                         gts[k] = bcf_gt_unphased(v[k]);
@@ -558,6 +592,12 @@ namespace vcfpp
                 throw std::runtime_error("couldn't set genotypes correctly.\n");
             else
                 return true;
+        }
+
+        void setPhasing(const std::vector<char>& v)
+        {
+            assert(v.size()==gtPhase.size());
+            gtPhase = v;
         }
 
         /**
@@ -797,8 +837,10 @@ namespace vcfpp
          * #define GT_HAPL_A 5
          * #define GT_UNKN   6
          * */
-        std::vector<int8_t> typeOfGT; //
+        std::vector<char> typeOfGT; //
+        std::vector<char> gtPhase;  // keep track of status of phasing of the GT
         int nploidy = 0;
+        int shape1 = 0;
 
     private:
         std::shared_ptr<BcfHeader> header;
@@ -810,7 +852,6 @@ namespace vcfpp
         int ndst, ret, nsamples;
         bool noneMissing = true; // whenever parsing a tag have to reset this variable
         bool isAllPhased = false;
-        int shape1 = 0;
     };
 
     /**
