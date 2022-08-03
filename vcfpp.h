@@ -596,7 +596,7 @@ namespace vcfpp
 
         void setPhasing(const std::vector<char>& v)
         {
-            assert(v.size()==gtPhase.size());
+            assert(v.size() == gtPhase.size());
             gtPhase = v;
         }
 
@@ -714,11 +714,11 @@ namespace vcfpp
             return false;
         }
 
-        /** @brief return boolean value indicates if current variant is SNP or not */
-        inline bool isSNP() const
+        /** @brief return boolean value indicates if current variant is multi allelic or not */
+        inline bool isMultiAllelic() const
         {
             // REF has multiple allels
-            if (REF().length() > 1)
+            if (REF().length() > 1|| line->n_allele < 3)
                 return false;
             for (int i = 1; i < line->n_allele; i++)
             {
@@ -731,16 +731,30 @@ namespace vcfpp
             return true;
         }
 
+        /** @brief return boolean value indicates if current variant is SNP (biallelic) or not */
+        inline bool isSNP() const
+        {
+            // REF and ALT have multiple allels
+            if (REF().length() > 1 || line->n_allele > 2)
+                return false;
+            std::string snp(line->d.allele[1]);
+            if (!(snp == "A" || snp == "C" || snp == "G" || snp == "T"))
+            {
+                return false;
+            }
+            return true;
+        }
+
         /** @brief return CHROM name */
         inline std::string CHROM() const
         {
             return std::string(bcf_hdr_id2name(header->hdr, line->rid));
         }
 
-        /** @brief return 0-base position */
+        /** @brief return 1-base position */
         inline int64_t POS() const
         {
-            return line->pos;
+            return line->pos + 1;
         }
 
         /** @brief return 0-base start of the variant (can be any type) */
