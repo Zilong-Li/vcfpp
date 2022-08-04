@@ -1,14 +1,14 @@
 # detect OS architecture and add flags
 CXX      = g++
 # CXXFLAGS = -std=c++11 -g -Wall -fsanitize=address
-CXXFLAGS = -std=c++11 -Wall -g
+CXXFLAGS = -std=c++11 -Wall
 LDFLAGS += -lhts
 LIBS     = -lz -lm -lbz2 -llzma -lcurl -lpthread
-INC      = -I.
+INC      = -I. -I..
 
-OBJS = test-main.o bcf-reader.o
+OBJS = test-main.o bcf-reader.o bcf-writer.o
 
-BINS = bcf-reader.bin
+BINS = bcf-reader.bin bcf-writer.bin
 
 .PHONY: all test clean
 
