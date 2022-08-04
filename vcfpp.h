@@ -1,32 +1,33 @@
 /*******************************************************************************
- * @file        vcfpp.h
+ * @file        https://github.com/Zilong-Li/vcfpp/vcfpp.h
  * @author      Zilong Li
  * @email       zilong.dk@gmail.com
  * @version     v0.0.1
  * @breif       a single C++ file for manipulating VCF
- * @license     MIT
- * Copyright (C) 2022
- * The use of this code is governed by the LICENSE file.
+ * Copyright (C) 2022. The use of this code is governed by the LICENSE file.
  ******************************************************************************/
 
 /*! \mainpage The documentation of the single C++ file *vcfpp.h* for manipulating VCF/BCF
  *
  * \section intro_sec Introduction
  *
- * This project includes 4 abstract classes as interface to the basic htslib
+ * This project https://github.com/Zilong-Li/vcfpp introduces a single C++ file as interface to the basic htslib, which can be easily included in a C++ program
+ * for scripting high-performance genomic analyses.
  *
- * - vcfpp.BcfHeader keeps track of the header information of a VCF/BCF
- * - vcfpp.BcfRecord keeps track of the variants information of a VCF/BCF
+ * - vcfpp.BcfHeader keeps track of the header information in  VCF/BCF
+ * - vcfpp.BcfRecord keeps track of the variants information in VCF/BCF
  * - vcfpp.BcfReader streams in variants from VCF/BCF file or stdin
  * - vcfpp.BcfWriter streams out variants to VCF/BCF file or stdout
  *
  * \section install_sec Installation
  *
- * Make sure you have htslib installed on your system and it is in your environment.
+ * - <EM> include "vcfpp.h" </EM> to your program and compile it by <EM> g++ my.cpp -std=c++11 -Wall -I. -lhts -lz -lm -lbz2 -llzma -lcurl </EM>
+ * - make sure you have https://github.com/samtools/htslib installed on your system and the it is in your environment.
+ *
  *
  * \copyright Copyright (C) 2022 Zilong Li . This project is released under the MIT license.
  *
- * etc...
+ *
  */
 
 #ifndef VCFPP_H_
@@ -59,13 +60,10 @@ namespace vcfpp
                                 bool>::type;
 
     template <typename T>
-    using isIntOrFloat = typename std::enable_if<std::is_same<T, int>::value || std::is_same<T, float>::value || std::is_same<T, double>::value, bool>::type;
-
-    template <typename T>
     using isInfoVector = typename std::enable_if<std::is_same<T, std::vector<int>>::value || std::is_same<T, std::vector<float>>::value, bool>::type;
 
     template <typename T>
-    using isIntOrFloat = typename std::enable_if<std::is_same<T, int>::value || std::is_same<T, float>::value || std::is_same<T, double>::value, bool>::type;
+    using isScalar = typename std::enable_if<std::is_same<T, int>::value || std::is_same<T, float>::value || std::is_same<T, double>::value, bool>::type;
 
     template <typename T>
     using isString = typename std::enable_if<std::is_same<T, std::string>::value, void>::type;
@@ -80,7 +78,7 @@ namespace vcfpp
 
 
     template <typename T>
-    isIntOrFloat<T> isMissing(T const& v)
+    isScalar<T> isMissing(T const& v)
     {
         if (std::is_same<T, float>::value)
         {
@@ -92,6 +90,7 @@ namespace vcfpp
         }
     }
 
+    // test if a string is end with another string
     bool isEndWith(std::string const& s, std::string const& e)
     {
         if (s.length() >= e.length())
@@ -124,6 +123,7 @@ namespace vcfpp
         {
         }
 
+        /** @brief print out the header */
         friend std::ostream& operator<<(std::ostream& out, const BcfHeader& h)
         {
             out << h.asString();
@@ -131,26 +131,50 @@ namespace vcfpp
         }
 
         // TODO: check if the value is valid for vcf specification
-        inline void addInfo(const std::string& id, const std::string& number, const std::string& type, const std::string& description)
+
+        /** @brief add INFO field to header
+         *  @param id tag name in INFO field
+         *  @param number Number of elements
+         *  @param type Integer, Floast or String
+         *  @param description Description of the tag
+         *  */
+        inline void addINFO(const std::string& id, const std::string& number, const std::string& type, const std::string& description)
         {
             addLine("##INFO=<ID=" + id + ",Number=" + number + ",Type=" + type + ",Description=\"" + description + "\">");
         }
 
-        inline void addFormat(const std::string& id, const std::string& number, const std::string& type, const std::string& description)
+        /** @brief add FORMAT field to header
+         *  @param id tag name in FORMAT field
+         *  @param number Number of elements
+         *  @param type Integer, Floast or String
+         *  @param description Description of the tag
+         *  */
+        inline void addFORMAT(const std::string& id, const std::string& number, const std::string& type, const std::string& description)
         {
             addLine("##FORMAT=<ID=" + id + ",Number=" + number + ",Type=" + type + ",Description=\"" + description + "\">");
         }
 
-        inline void addFilter(const std::string& id, const std::string& number, const std::string& type, const std::string& description)
+        /**
+         * @brief add one FILTER line to header
+         * @param id FILTER name
+         * @param description Description of the FILTER
+         * */
+        inline void addFILTER(const std::string& id, const std::string& description)
         {
-            addLine("##FILTER=<ID=" + id + ",Number=" + number + ",Type=" + type + ",Description=\"" + description + "\">");
+            addLine("##FILTER=<ID=" + id + ",Description=\"" + description + "\">");
         }
 
+        /** @brief add contig to header
+         *  @param id contig or chromosome name
+         *  */
         inline void addContig(const std::string& id)
         {
             addLine("##contig=<ID=" + id + ">");
         }
 
+        /**
+         * @brief add one line to header
+         * */
         inline void addLine(const std::string& str)
         {
             int ret = 0;
@@ -162,6 +186,7 @@ namespace vcfpp
                 throw std::runtime_error("could not add " + str + " to header\n");
         }
 
+        /** @brief add one sample name to header */
         inline void addSample(const std::string& sample) const
         {
             bcf_hdr_add_sample(hdr, sample.c_str());
@@ -171,6 +196,7 @@ namespace vcfpp
             }
         }
 
+        /** @brief return header as a string */
         inline std::string asString() const
         {
             kstring_t s = {0, 0, NULL};          // kstring
@@ -180,6 +206,7 @@ namespace vcfpp
                 throw std::runtime_error("failed to convert formatted header to string");
         }
 
+        /** @brief return all samples in a string vector */
         std::vector<std::string> getSamples() const
         {
             std::vector<std::string> vec;
@@ -190,6 +217,7 @@ namespace vcfpp
             return vec;
         }
 
+        /** @brief return all contig/chromosome names in a string vector */
         std::vector<std::string> getSeqnames() const
         {
             int ret = 0;
@@ -205,27 +233,35 @@ namespace vcfpp
             return vec;
         }
 
+        /** @brief remove a contig tag from header */
         inline void removeContig(std::string tag) const
         {
 
             bcf_hdr_remove(hdr, BCF_HL_CTG, tag.c_str());
         }
 
+        /** @brief remove a INFO tag from header */
         inline void removeInfo(std::string tag) const
         {
             bcf_hdr_remove(hdr, BCF_HL_INFO, tag.c_str());
         }
 
+        /** @brief remove a FORMAT tag from header */
         inline void removeFormat(std::string tag) const
         {
             bcf_hdr_remove(hdr, BCF_HL_FMT, tag.c_str());
         }
 
+        /** @brief remove a FILTER tag from header */
         inline void removeFilter(std::string tag) const
         {
             bcf_hdr_remove(hdr, BCF_HL_FLT, tag.c_str());
         }
 
+        /**
+         * @brief set samples names
+         * @param samples samples to include or exclude  as a comma-separated string
+         * */
         inline void setSamples(const std::string& samples) const
         {
             int ret = 0;
@@ -240,11 +276,13 @@ namespace vcfpp
             }
         }
 
+        /** @brief set the VCF version */
         inline void setVersion(const std::string& version) const
         {
             bcf_hdr_set_version(hdr, version.c_str());
         }
 
+        /** @brief return the number of samples in the VCF */
         inline int nSamples() const
         {
             return bcf_hdr_nsamples(hdr);
@@ -259,7 +297,7 @@ namespace vcfpp
     /**
      * @class BcfRecord
      * @brief Object represents a record in VCF
-     * @note  nothing important
+     * @note  the object is constructed using a BcfHeader object and needs to be filled in by calling BcfReader.getNextVariant function.
      **/
     class BcfRecord
     {
@@ -267,6 +305,7 @@ namespace vcfpp
         friend class BcfWriter;
 
     public:
+        /** @brief initilize a BcfRecord object using a given BcfHeader object */
         BcfRecord(BcfHeader& h) : header(std::make_shared<BcfHeader>(h))
         {
             nsamples = header->nSamples();
@@ -278,14 +317,12 @@ namespace vcfpp
         {
         }
 
+        /** @brief print out the variant */
         friend std::ostream& operator<<(std::ostream& out, const BcfRecord& v)
         {
             out << v.asString();
             return out;
         }
-
-        // TODO resetHeader()
-        void resetHeader();
 
         /** @brief return current variant as raw string */
         inline std::string asString() const
@@ -298,46 +335,38 @@ namespace vcfpp
         }
 
         /**
-         * @param v valid T includes vector of bool, char, int type
+         * @brief get genotypes and fill in the input vector
+         * @param v valid input includes vector<bool>, vector<char>, vector<int> type
          * @return bool
-         * @TODO add supllementary vector to indicate the genotype type: HOM, REF, UNKNOWN
          * */
         template <typename T>
         isValidGT<T> getGenotypes(T& v)
         {
             ndst = 0;
-            // note: ret is 1 if GT is just "." and only one sample
-            //       if ret == nsamples then haploidy
             ret = bcf_get_genotypes(header->hdr, line, &gts, &ndst);
             if (ret <= 1)
                 return false; // gt not present
-            // if nploidy is not set manually. find the max nploidy using the first variant (eg. 2) resize v as max(nploidy) * nsamples which is ret
-            if (nploidy == 0)
+            // if nploidy is not set manually. find the max nploidy using the first variant (eg. 2) resize v as max(nploidy) * nsamples (ret)
+            // NOTE: if ret == nsamples and only one sample then haploid
+            if (ret != nploidy * nsamples && nploidy > 0)
             {
-                v.resize(ret);
-                nploidy = ret / nsamples;
-            }
-            else if (ret != nploidy * nsamples)
-            {
-                v.resize(ret);
-                nploidy = ret / nsamples;
+                // rare case if noploidy is set manually. eg. only one sample. the first variant is '1' but the second is '1/0'. ret = 1 but nploidy should be 2
+                v.resize(nploidy * nsamples);
             }
             else
             {
-                v.resize(nploidy * nsamples); // if nploidy is set
+                v.resize(ret);
+                nploidy = ret / nsamples;
             }
             // work with nploidy == 1, haploid?
-            // printf("n:%d, ploidy:%d\n", ret, nploidy);
             int i, j, nphased = 0;
             noneMissing = true;
             fmt = bcf_get_fmt(header->hdr, line, "GT");
             int nploidy_cur = ret / nsamples; // requires nploidy_cur <= nploidy
             for (i = 0; i < nsamples; i++)
             {
-                // check and fill typeOfGT; only supports SNPs now. check vcfstats.c for inspiration
+                // check and fill in typeOfGT; only supports SNPs now. check vcfstats.c for inspiration
                 typeOfGT[i] = bcf_gt_type(fmt, i, NULL, NULL);
-                // printf("type is %i\n", typeOfGT[i]);
-
                 if (typeOfGT[i] == GT_UNKN)
                 {
                     noneMissing = false;
@@ -348,8 +377,7 @@ namespace vcfpp
 
                 for (j = 0; j < nploidy_cur; j++)
                 {
-                    // TODO: right now only parse 0 and 1, ie max(nploidy)=2; other values 2,3... will be converted to
-                    // 1;
+                    // TODO: right now only parse 0 and 1, ie max(nploidy)=2; other values 2,3... will be set to 1
                     v[i * nploidy + j] = bcf_gt_allele(gts[j + i * nploidy_cur]) != 0;
                 }
                 if (nploidy == 2)
@@ -366,6 +394,7 @@ namespace vcfpp
         }
 
         /**
+         * @brief get tag value in FORMAT
          * @param tag valid tag name in FORMAT column declared in the VCF header
          * @param v valid input include vector of float, char, int type
          * @return bool
@@ -374,7 +403,7 @@ namespace vcfpp
         isFormatVector<T> getFormat(std::string tag, T& v)
         {
             fmt = bcf_get_fmt(header->hdr, line, tag.c_str());
-            shape1 = fmt->n;
+            nvalues = fmt->n;
             ndst = 0;
             S* dst = NULL;
             int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
@@ -396,10 +425,16 @@ namespace vcfpp
             }
         }
 
-        bool getFormat(std::string tag, std::vector<std::string>& v)
+        /**
+         * @brief get tag value in FORMAT
+         * @param tag valid tag name in FORMAT column declared in the VCF header
+         * @param v vector of string
+         * @return bool
+         * */
+        bool getFORMAT(std::string tag, std::vector<std::string>& v)
         {
             fmt = bcf_get_fmt(header->hdr, line, tag.c_str());
-            shape1 = fmt->n;
+            nvalues = fmt->n;
             // if ndst < (fmt->n+1)*nsmpl; then realloc is involved
             ret = -1, ndst = 0;
             char** dst = NULL;
@@ -423,12 +458,13 @@ namespace vcfpp
         }
 
         /**
+         * @brief get tag value in INFO
          * @param tag valid tag name in INFO column declared in the VCF header
          * @param v valid input include vector of float, int type
          * @return bool
          * */
         template <typename T, typename S = typename T::value_type>
-        isInfoVector<T> getInfo(std::string tag, T& v)
+        isInfoVector<T> getINFO(std::string tag, T& v)
         {
             info = bcf_get_info(header->hdr, line, tag.c_str());
             S* dst = NULL;
@@ -450,12 +486,13 @@ namespace vcfpp
         }
 
         /**
+         * @brief get tag value in INFO
          * @param tag valid tag name in INFO column declared in the VCF header
          * @param v valid input include scalar value of float or int type
          * @return bool
          * */
         template <typename T>
-        isIntOrFloat<T> getInfo(std::string tag, T& v)
+        isScalar<T> getINFO(std::string tag, T& v)
         {
             info = bcf_get_info(header->hdr, line, tag.c_str());
             // scalar value
@@ -478,12 +515,13 @@ namespace vcfpp
         }
 
         /**
+         * @brief get tag value in INFO
          * @param tag valid tag name in INFO column declared in the VCF header
          * @param v valid input is std::string
          * @return bool
          * */
         template <typename T>
-        isString<T> getInfo(std::string tag, T& v)
+        isString<T> getINFO(std::string tag, T& v)
         {
             info = bcf_get_info(header->hdr, line, tag.c_str());
             if (info->type == BCF_BT_CHAR)
@@ -493,12 +531,13 @@ namespace vcfpp
         }
 
         /**
+         * @brief set tag value for INFO
          * @param tag valid tag name in INFO column declared in the VCF header
          * @param v valid input include scalar value of float or int type
          * @return bool
          * */
         template <typename T>
-        isIntOrFloat<T> setInfo(std::string tag, const T& v)
+        isScalar<T> setINFO(std::string tag, const T& v)
         {
             ret = -1;
             // bcf_hrec_set_val
@@ -520,13 +559,15 @@ namespace vcfpp
                 return true;
             }
         }
+
         /**
+         * @brief set tag value for INFO
          * @param tag valid tag name in INFO column declared in the VCF header
          * @param v valid input include vector<int> vector<float> std::string
-         * @return bool
+         * @return boolean
          * */
         template <typename T>
-        isValidInfo<T> setInfo(std::string tag, const T& v)
+        isValidInfo<T> setINFO(std::string tag, const T& v)
         {
             ret = -1;
             // bcf_update_info_flag(header->hdr, line, tag.c_str(), NULL, 1);
@@ -544,7 +585,7 @@ namespace vcfpp
         }
 
         /** remove the given tag from INFO*/
-        void removeInfo(std::string tag)
+        void removeINFO(std::string tag)
         {
             ret = -1;
             int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
@@ -563,7 +604,6 @@ namespace vcfpp
         /**
          * @brief set genotypes for all samples
          * @param v valid input include vector<int>, vector<float>, std::string
-         * @param phased boolean valude indicates if the genotypes are phased
          * @return bool
          * */
         template <class T>
@@ -594,9 +634,13 @@ namespace vcfpp
                 return true;
         }
 
+        /**
+         * @brief set phasing status for all diploid samples using given vector
+         * @param v valid input includes vector<char>
+         * */
         void setPhasing(const std::vector<char>& v)
         {
-            assert(v.size() == gtPhase.size());
+            assert(v.size() == nsamples);
             gtPhase = v;
         }
 
@@ -607,7 +651,7 @@ namespace vcfpp
          * @return bool
          * */
         template <typename T>
-        isValidFMT<T> setFormat(std::string tag, const T& v)
+        isValidFMT<T> setFORMAT(std::string tag, const T& v)
         {
             ret = -1;
             int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
@@ -630,7 +674,7 @@ namespace vcfpp
          * @return bool
          * */
         template <typename T>
-        isIntOrFloat<T> setFormat(std::string tag, const T& v)
+        isScalar<T> setFORMAT(std::string tag, const T& v)
         {
             ret = -1;
             float v2 = v;
@@ -667,6 +711,7 @@ namespace vcfpp
             }
         }
 
+        /** @brief if all samples have non missing values for the tag in FORMAT */
         inline bool isNoneMissing() const
         {
             return noneMissing;
@@ -718,7 +763,7 @@ namespace vcfpp
         inline bool isMultiAllelic() const
         {
             // REF has multiple allels
-            if (REF().length() > 1|| line->n_allele < 3)
+            if (REF().length() > 1 || line->n_allele <= 2)
                 return false;
             for (int i = 1; i < line->n_allele; i++)
             {
@@ -837,24 +882,32 @@ namespace vcfpp
             return nploidy;
         }
 
+        /// return the shape of current tag in FORMAT (nsamples x nvalues)
         inline std::tuple<int, int> shapeOfQuery() const
         {
-            return std::make_tuple(nsamples, shape1);
+            return std::make_tuple(nsamples, nvalues);
         }
 
         /**
-         * #define GT_HOM_RR 0 // note: the actual value of GT_* matters, used in dosage r2 calculation
-         * #define GT_HOM_AA 1
-         * #define GT_HET_RA 2
-         * #define GT_HET_AA 3
-         * #define GT_HAPL_R 4
-         * #define GT_HAPL_A 5
-         * #define GT_UNKN   6
+         * @brief vector of nsamples length. keep track of the type of genotype (one of GT_HOM_RR, GT_HET_RA,
+         *        GT_HOM_AA, GT_HET_AA, GT_HAPL_R, GT_HAPL_A or GT_UNKN).
+         * @note GT_HOM_RR 0 \n
+         *       GT_HOM_AA 1 \n
+         *       GT_HET_RA 2 \n
+         *       GT_HET_AA 3 \n
+         *       GT_HAPL_R 4 \n
+         *       GT_HAPL_A 5 \n
+         *       GT_UNKN   6 \n
          * */
-        std::vector<char> typeOfGT; //
-        std::vector<char> gtPhase;  // keep track of status of phasing of the GT
+        std::vector<char> typeOfGT;
+
+        /** @brief vector of nsamples length. keep track of the phasing status of each sample (for dploidy) */
+        std::vector<char> gtPhase;
+
+        /// the number of ploidy
         int nploidy = 0;
-        int shape1 = 0;
+        /// the number of values for a tag in FORMAT
+        int nvalues = 0;
 
     private:
         std::shared_ptr<BcfHeader> header;
@@ -935,15 +988,20 @@ namespace vcfpp
                 hts_itr_destroy(itr);
         }
 
+        /** @brief set the number of threads to use */
         inline int setThreads(int n)
         {
             return hts_set_threads(fp, n);
         }
 
-        // 1. check and load index first
-        // 2. query iterval region
+        /** @brief stream to specific region
+         *  @param region the string is samtools-like format which is chr:start-end
+         *  TODO reset current region. seek to the first record.
+         *  */
         void setRegion(const std::string& region)
         {
+            // 1. check and load index first
+            // 2. query iterval region
             if (isEndWith(fname, "bcf") || isEndWith(fname, "bcf.gz"))
             {
                 isBcf = true;
@@ -960,9 +1018,8 @@ namespace vcfpp
             }
         }
 
-        // TODO reset current region. seek to the first record.
-        void reset();
-
+        /** @brief read in the next variant
+         *  @param r r is a BcfRecord object to be filled in. */
         bool getNextVariant(BcfRecord& r)
         {
             int ret = -1;
@@ -994,8 +1051,11 @@ namespace vcfpp
             }
         }
 
-        BcfHeader header; // bcf header
+        /** @brief a BcfHeader object */
+        BcfHeader header;
+        /** @brief number of samples in the VCF */
         int nsamples;
+        /** @brief number of samples in the VCF */
         std::vector<std::string> SamplesName;
 
     private:
@@ -1018,9 +1078,9 @@ namespace vcfpp
     public:
         /**
          * @brief          Open VCF/BCF file for writing. The format is infered from file's suffix
-         * @param fname    The file name or "-" for stdin/stdout. For indexed files
+         * @param name    The file name or "-" for stdin/stdout. For indexed files
          */
-        BcfWriter(const std::string& fname_) : fname(fname_)
+        BcfWriter(const std::string& name) : fname(name)
         {
             std::string mode{"w"};
             if (isEndWith(fname, "bcf.gz"))
@@ -1034,14 +1094,14 @@ namespace vcfpp
 
         /**
          * @brief          Open VCF/BCF file for writing using given mode
-         * @param fname    The file name or "-" for stdin/stdout. For indexed files
+         * @param name    The file name or "-" for stdin/stdout. For indexed files
          * @param mode     Mode matching \n
          *                 [w]b  .. compressed BCF \n
          *                 [w]bu .. uncompressed BCF \n
          *                 [w]z  .. compressed VCF \n
          *                 [w]   .. uncompressed VCF
          */
-        BcfWriter(const std::string& fname_, const std::string& mode) : fname(fname_)
+        BcfWriter(const std::string& name, const std::string& mode) : fname(name)
         {
             fp = hts_open(fname.c_str(), mode.c_str());
         }
@@ -1052,6 +1112,7 @@ namespace vcfpp
             bcf_destroy(b);
         }
 
+        /// initial a VCF header using the internal template given a specific version. VCF4.1 is the default
         void initalHeader(std::string version = "VCF4.1")
         {
             header = BcfHeader();
@@ -1059,7 +1120,7 @@ namespace vcfpp
             header.setVersion(version);
         }
 
-        // make a copy of given header
+        /// initial a VCF header by copying from another header
         void initalHeader(const BcfHeader& h)
         {
             header = BcfHeader();
@@ -1068,6 +1129,7 @@ namespace vcfpp
                 throw std::runtime_error("couldn't copy the header from another vcf.\n");
         }
 
+        /// write a string to a vcf line
         void writeLine(const std::string& vcfline)
         {
             if (!isHeaderWritten)
@@ -1090,6 +1152,7 @@ namespace vcfpp
                 throw std::runtime_error("error writing: " + vcfline + "\n");
         }
 
+        /// streams out the header
         bool writeHeader()
         {
             ret = bcf_hdr_write(fp, header.hdr);
@@ -1099,6 +1162,7 @@ namespace vcfpp
                 return false;
         }
 
+        /// streams out the given variant of BcfRecord type
         inline bool writeRecord(BcfRecord& v)
         {
             if (!isHeaderWritten)
@@ -1109,7 +1173,8 @@ namespace vcfpp
                 return true;
         }
 
-        BcfHeader header = BcfHeader(); // bcf header
+        /// a BcfHeader object
+        BcfHeader header = BcfHeader();
 
     private:
         htsFile* fp = NULL; // hts file

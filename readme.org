@@ -1,8 +1,25 @@
 #+TITLE: vcfpp: a single C++ file for manipulating VCF
 
+This project introduces a single C++ file as interface to the basic =htslib=, which can be easily included in a C++ program
+for scripting high-performance genomic analyses.
 
+Features:
+- single header file to be easily included for scripting
+- only dependency is =htslib= so has the full functionality of the =htslib=, eg. supports of compressed VCF/BCF and remote url link.
+- easy and safe [[https://zilongli.org/proj/vcfpp/index.html][API]] to use. no need to free memory manually.
+- compatible with C++11 and later
+
+* Table of Contents :TOC:QUOTE:
+#+BEGIN_QUOTE
+- [[#installation][Installation]]
+- [[#examples][Examples]]
+  - [[#calculate-the-heterozygosity-rate][Calculate the heterozygosity rate]]
+#+END_QUOTE
+
+* Installation
+- download the released [[vcfpp.h]] and include it in your program.
+- make sure you have https://github.com/samtools/htslib installed on your system and the it is in your environment.
 * Examples
-
 ** Calculate the heterozygosity rate
 
 Let's count the number of heterozygous sites for each sample in all records. The core is *just 10 lines*.
@@ -16,18 +33,16 @@ int main(int argc, char* argv[])
 {
     BcfReader vcf("ALL.chr22.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz");
     BcfRecord v(vcf.header);
-    vector<int> gt, hetsum(vcf.nsamples);
+    vector<char> gt; // genotype can be of bool, char or int type
+    vector<int> hetsum(vcf.nsamples);
     while (vcf.getNextVariant(v)) {
-        if (v.isSNP()) {
-            v.getGenotypes(gt);
-            for (int i = 0; i < gt.size()/2 ; i++) { // for diploidy
-                hetsum[i] += abs(gt[2 * i + 0] - gt[2 * i +1]);
-            }
+        if (!v.isSNP()) continue; // skip other type of variants
+        v.getGenotypes(gt);
+        for (int i = 0; i < gt.size()/2 ; i++) { // for diploid
+            hetsum[i] += abs(gt[2 * i + 0] - gt[2 * i +1]);
         }
     }
-    for (int i = 0; i < vcf.nsamples; i++) {
-        cout << vcf.SamplesName[i] << "\t" << hetsum[i] << endl;
-    }
+    for (auto i : hetsum) { cout << i << endl; }
     return 0;
 }
 #+end_src
@@ -48,11 +63,10 @@ int main(int argc, char* argv[])
     vector<int> gt;
     ArrayXi hetsum = ArrayXi::Zero(vcf.header.nsamples);
     while (vcf.getNextVariant(v)) {
-        if (v.isSNP()) {
-            v.getGenotypes(gt);
-            Map<ArrayX<int>> m(gt.data(), v.ploidy() , gt.size() / v.ploidy());
-            hetsum += (m.row(0) - m.row(1)).abs(); // for diploidy
-        }
+        if (!v.isSNP()) continue; // skip other type of variants
+        v.getGenotypes(gt);
+        Map<ArrayX<int>> m(gt.data(), v.ploidy() , gt.size() / v.nploidy);
+        hetsum += (m.row(0) - m.row(1)).abs(); // for diploid
     }
     cout << hetsum << endl;
     return 0;
