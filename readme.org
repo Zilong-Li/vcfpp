@@ -61,11 +61,11 @@ int main(int argc, char* argv[])
     BcfReader vcf("ALL.chr22.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz");
     BcfRecord v(vcf.header);
     vector<int> gt;
-    ArrayXi hetsum = ArrayXi::Zero(vcf.header.nsamples);
+    ArrayXi hetsum = ArrayXi::Zero(vcf.nsamples);
     while (vcf.getNextVariant(v)) {
         if (!v.isSNP()) continue; // skip other type of variants
         v.getGenotypes(gt);
-        Map<ArrayX<int>> m(gt.data(), v.ploidy() , gt.size() / v.nploidy);
+        Map<const ArrayX<int>> m(gt.data(), v.ploidy() , gt.size() / v.nploidy);
         hetsum += (m.row(0) - m.row(1)).abs(); // for diploid
     }
     cout << hetsum << endl;

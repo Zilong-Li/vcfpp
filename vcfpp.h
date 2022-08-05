@@ -259,7 +259,7 @@ namespace vcfpp
         }
 
         /**
-         * @brief set samples names
+         * @brief explicitly set samples to be extracted
          * @param samples samples to include or exclude  as a comma-separated string
          * */
         inline void setSamples(const std::string& samples) const
@@ -796,6 +796,12 @@ namespace vcfpp
             return std::string(bcf_hdr_id2name(header->hdr, line->rid));
         }
 
+        /** @brief return ID field */
+        inline std::string ID() const
+        {
+            return std::string(line->d.id);
+        }
+
         /** @brief return 1-base position */
         inline int64_t POS() const
         {
@@ -929,31 +935,32 @@ namespace vcfpp
     class BcfReader
     {
     public:
+        /// Construct an empty BcfReader
+        BcfReader()
+        {
+        }
+
         /**
          *  @brief construct a vcf/bcf reader from file.
-         *  @param fname_   the input vcf/bcf with suffix vcf(.gz) or bcf(.gz)
+         *  @param file   the input vcf/bcf with suffix vcf(.gz)/bcf(.gz) or stdin "-"
          */
-        BcfReader(const std::string& fname_) : fname(fname_)
+        BcfReader(const std::string& file) : fname(file)
         {
-            fp = hts_open(fname.c_str(), "r");
-            header.hdr = bcf_hdr_read(fp);
-            nsamples = bcf_hdr_nsamples(header.hdr);
-            SamplesName = header.getSamples();
+            Open(file);
         }
 
         /**
          *  @brief construct a vcf/bcf reader with subset samples
-         *  @param fname_   the input vcf/bcf with suffix vcf(.gz) or bcf(.gz)
+         *  @param file   the input vcf/bcf with suffix vcf(.gz)/bcf(.gz) or stdin "-"
          *  @param samples  LIST samples to include or exclude as a comma-separated string. \n
          *                  LIST : select samples in list \n
          *                  ^LIST : exclude samples from list \n
          *                  "-" : include all samples \n
          *                  "" : exclude all samples
          */
-        BcfReader(const std::string& fname_, const std::string& samples) : fname(fname_)
+        BcfReader(const std::string& file, const std::string& samples) : fname(file)
         {
-            fp = hts_open(fname.c_str(), "r");
-            header.hdr = bcf_hdr_read(fp);
+            Open(file);
             header.setSamples(samples);
             nsamples = bcf_hdr_nsamples(header.hdr);
             SamplesName = header.getSamples();
@@ -961,7 +968,7 @@ namespace vcfpp
 
         /**
          *  @brief construct a vcf/bcf reader with subset samples in target region
-         *  @param fname_   the input vcf/bcf with suffix vcf(.gz) or bcf(.gz)
+         *  @param file   the input vcf/bcf with suffix vcf(.gz) or bcf(.gz)
          *  @param samples  LIST samples to include or exclude as a comma-separated string. \n
          *                  LIST : select samples in list \n
          *                  ^LIST : exclude samples from list \n
@@ -969,16 +976,42 @@ namespace vcfpp
          *                  "" : exclude all samples
          *  @param region samtools-like region "chr:start-end"
          */
-        BcfReader(const std::string& fname_, const std::string& samples, const std::string& region) : fname(fname_)
+        BcfReader(const std::string& file, const std::string& samples, const std::string& region) : fname(file)
         {
-            fp = hts_open(fname.c_str(), "r");
-            header.hdr = bcf_hdr_read(fp);
+            Open(file);
             header.setSamples(samples);
             nsamples = bcf_hdr_nsamples(header.hdr);
             setRegion(region);
             SamplesName = header.getSamples();
         }
 
+        /// open a VCF/BCF/STDIN file for streaming in
+        void Open(const std::string& file)
+        {
+            fname = file;
+            fp = hts_open(file.c_str(), "r");
+            header.hdr = bcf_hdr_read(fp);
+            nsamples = bcf_hdr_nsamples(header.hdr);
+            SamplesName = header.getSamples();
+        }
+
+        /// return if the file is opened successfully
+        bool isOpen() const
+        {
+            if (fp != NULL)
+                return true;
+            else
+                return false;
+        }
+
+        /// close the BcfReader object.
+        void Close()
+        {
+            if (fp)
+                hts_close(fp);
+            if (itr)
+                hts_itr_destroy(itr);
+        }
 
         virtual ~BcfReader()
         {
@@ -994,12 +1027,13 @@ namespace vcfpp
             return hts_set_threads(fp, n);
         }
 
-        /** @brief stream to specific region
-         *  @param region the string is samtools-like format which is chr:start-end
-         *  TODO reset current region. seek to the first record.
-         *  */
+        /**
+         * @brief explicitly stream to specific region
+         * @param region the string is samtools-like format which is chr:start-end
+         * */
         void setRegion(const std::string& region)
         {
+            // TODO reset current region. seek to the first record.
             // 1. check and load index first
             // 2. query iterval region
             if (isEndWith(fname, "bcf") || isEndWith(fname, "bcf.gz"))
@@ -1076,11 +1110,44 @@ namespace vcfpp
     class BcfWriter
     {
     public:
+        /// Construct an empty BcfWriter
+        BcfWriter()
+        {
+        }
+
         /**
          * @brief          Open VCF/BCF file for writing. The format is infered from file's suffix
-         * @param name    The file name or "-" for stdin/stdout. For indexed files
+         * @param fname    The file name or "-" for stdin/stdout. For indexed files
          */
-        BcfWriter(const std::string& name) : fname(name)
+        BcfWriter(const std::string& fname)
+        {
+            Open(fname);
+        }
+
+        /**
+         * @brief          Open VCF/BCF file for writing using given mode
+         * @param fname    The file name or "-" for stdin/stdout. For indexed files
+         * @param mode     Mode matching \n
+         *                 [w]b  .. compressed BCF \n
+         *                 [w]bu .. uncompressed BCF \n
+         *                 [w]z  .. compressed VCF \n
+         *                 [w]   .. uncompressed VCF
+         */
+        BcfWriter(const std::string& fname, const std::string& mode)
+        {
+            Open(fname, mode);
+        }
+
+        virtual ~BcfWriter()
+        {
+            Close();
+        }
+
+        /**
+         * @brief          Open VCF/BCF file for writing. The format is infered from file's suffix
+         * @param fname    The file name or "-" for stdin/stdout. For indexed files
+         */
+        void Open(const std::string& fname)
         {
             std::string mode{"w"};
             if (isEndWith(fname, "bcf.gz"))
@@ -1094,19 +1161,20 @@ namespace vcfpp
 
         /**
          * @brief          Open VCF/BCF file for writing using given mode
-         * @param name    The file name or "-" for stdin/stdout. For indexed files
+         * @param fname    The file name or "-" for stdin/stdout. For indexed files
          * @param mode     Mode matching \n
          *                 [w]b  .. compressed BCF \n
          *                 [w]bu .. uncompressed BCF \n
          *                 [w]z  .. compressed VCF \n
          *                 [w]   .. uncompressed VCF
          */
-        BcfWriter(const std::string& name, const std::string& mode) : fname(name)
+        void Open(const std::string& fname, const std::string& mode)
         {
             fp = hts_open(fname.c_str(), mode.c_str());
         }
 
-        virtual ~BcfWriter()
+        /// close the BcfWriter object.
+        void Close()
         {
             hts_close(fp);
             bcf_destroy(b);
@@ -1173,7 +1241,7 @@ namespace vcfpp
                 return true;
         }
 
-        /// a BcfHeader object
+        /// initialize an empty header;
         BcfHeader header = BcfHeader();
 
     private:
@@ -1181,7 +1249,6 @@ namespace vcfpp
         int ret;
         bcf1_t* b = bcf_init();
         kstring_t s = {0, 0, NULL}; // kstring
-        std::string fname;
         bool isHeaderWritten = false;
     };
 
