@@ -6,9 +6,9 @@ LDFLAGS += -lhts
 LIBS     = -lz -lm -lbz2 -llzma -lcurl -lpthread
 INC      = -I. -I..
 
-OBJS = test-main.o bcf-reader.o bcf-writer.o
+OBJS = test-main.o bcf-reader.o bcf-writer.o bcf-eigen.o
 
-BINS = bcf-reader.bin bcf-writer.bin
+BINS = bcf-reader.bin bcf-writer.bin bcf-eigen.bin
 
 .PHONY: all test clean
 
