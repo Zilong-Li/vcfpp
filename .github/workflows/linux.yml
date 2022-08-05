@@ -1,0 +1,40 @@
+
+name: Linux
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+
+    - name: install dependency
+      run: |
+        sudo apt update
+        sudo apt-get update
+        sudo apt-get -qy install build-essential zlib1g zlib1g-dev curl libcurl4-openssl-dev lzma-dev liblzma-dev
+
+    - name: install htslib
+      run: |
+        git clone --recursive https://github.com/samtools/htslib.git
+        cd htslib && autoreconf -i && ./configure --enable-libcurl
+        sudo make -j 4 install
+        sudo ldconfig
+        cd -
+
+    - name: test
+      run: |
+        cd test
+        make
+        ./bcf-reader.bin
+        ./bcf-writer.bin
+        # find . -name "*.bin" -exec '{}' --success ';'

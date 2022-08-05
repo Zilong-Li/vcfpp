@@ -1,0 +1,29 @@
+name: MacOS
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+
+    runs-on: macOS-latest
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+
+    - name: install dependency
+      run: |
+        brew install htslib
+
+    - name: test
+      run: |
+        cd test
+        make
+        ./bcf-reader.bin
+        ./bcf-writer.bin
+        # find . -name "*.bin" -exec '{}' --success ';'

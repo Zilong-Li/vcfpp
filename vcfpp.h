@@ -2,7 +2,7 @@
  * @file        https://github.com/Zilong-Li/vcfpp/vcfpp.h
  * @author      Zilong Li
  * @email       zilong.dk@gmail.com
- * @version     v0.0.1
+ * @version     v0.1.0
  * @breif       a single C++ file for manipulating VCF
  * Copyright (C) 2022. The use of this code is governed by the LICENSE file.
  ******************************************************************************/
@@ -25,7 +25,7 @@
  * - make sure you have https://github.com/samtools/htslib installed on your system and the it is in your environment.
  *
  *
- * \copyright Copyright (C) 2022 Zilong Li . This project is released under the MIT license.
+ * \copyright Copyright (C) 2022 Zilong Li . This project is governed by the LICENSE file in https://github.com/Zilong-Li/vcfpp.
  *
  *
  */

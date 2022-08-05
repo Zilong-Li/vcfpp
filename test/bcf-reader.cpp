@@ -6,7 +6,7 @@ using namespace std;
 
 TEST_CASE("Parsing BCF with subset samples in target region", "[bcf-reader]")
 {
-    BcfReader br("test-vcf-read.vcf.gz");
+    BcfReader br("test-vcf-read.vcf");
     BcfRecord v(br.header);
     vector<bool> gt;
     int n = 0;

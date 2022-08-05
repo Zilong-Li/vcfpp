@@ -1,12 +1,18 @@
 #+TITLE: vcfpp: a single C++ file for manipulating VCF
 
+[[https://github.com/Zilong-Li/vcfpp/actions/workflows/linux.yml/badge.svg]]
+[[https://github.com/Zilong-Li/vcfpp/actions/workflows/mac.yml/badge.svg]]
+[[https://www.cprogramming.com/c++11/what-is-c++0x.html][https://img.shields.io/badge/Language-C++0x-steelblue.svg]]
+[[https://github.com/Zilong-Li/vcfpp/releases/latest][https://img.shields.io/github/v/release/Zilong-Li/vcfpp.svg]]
+[[https://github.com/Zilong-Li/vcfpp/releases][https://img.shields.io/github/downloads/Zilong-Li/vcfpp/total.svg]]
+
 This project introduces a single C++ file as interface to the basic =htslib=, which can be easily included in a C++ program
 for scripting high-performance genomic analyses.
 
 Features:
-- single header file to be easily included for scripting
-- only dependency is =htslib= so has the full functionality of the =htslib=, eg. supports of compressed VCF/BCF and remote url link.
+- single header file to be easily included and compiled
 - easy and safe [[https://zilongli.org/proj/vcfpp/index.html][API]] to use. no need to free memory manually.
+- has the full functionalities of the =htslib=, eg. supports of compressed VCF/BCF and URL link as filename.
 - compatible with C++11 and later
 
 * Table of Contents :TOC:QUOTE:
@@ -14,6 +20,7 @@ Features:
 - [[#installation][Installation]]
 - [[#examples][Examples]]
   - [[#calculate-the-heterozygosity-rate][Calculate the heterozygosity rate]]
+  - [[#infer-population-structure-with-pca][Infer population structure with PCA]]
 #+END_QUOTE
 
 * Installation
@@ -47,7 +54,7 @@ int main(int argc, char* argv[])
 }
 #+end_src
 
-If you don't bother using *Eigen*, another header only high performance linear algebra library, here is the more expressive way. Also, we'll need the library to run PCA with VCF in another example.
+If you don't bother using [[https://eigen.tuxfamily.org/dox/index.html][Eigen]], another header only high performance linear algebra library, here is the more expressive way. Also, we'll need the library to run PCA with VCF in another example.
 
 #+begin_src C++
 #include "vcfpp.h"
@@ -69,6 +76,41 @@ int main(int argc, char* argv[])
         hetsum += (m.row(0) - m.row(1)).abs(); // for diploid
     }
     cout << hetsum << endl;
+    return 0;
+}
+#+end_src
+
+** Infer population structure with PCA
+
+We need the =Eigen= library to handle linear algebra tasks. To infer population structure using PCA, we first construct the genotype matrix (0,1,2) and standardize it under HWE assumption. Then we perform SVD on the standardized matrix to get the PCs.
+
+
+#+begin_src C++
+#include "vcfpp.h"
+#include <Eigen/Dense>
+using namespace std;
+using namespace vcfpp;
+using namespace Eigen;
+
+int main(int argc, char* argv[])
+{
+    BcfReader vcf("ALL.chr22.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz");
+    BcfRecord v(vcf.header);
+    int nsnps = 0, nsamples = vcf.nsamples;
+    vector<bool> gt;
+    vector<float> mat, gts(nsamples);
+    while (vcf.getNextVariant(v)) {
+        if (!v.isSNP()) continue; // skip other type of variants
+        v.getGenotypes(gt);
+        for (int i = 0; i < nsamples; i++) {
+            gts[i] = gt[2 * i] + gt[2 * i + 1];
+        }
+        mat.insert(mat.end(), gts.begin(), gts.end());
+        nsnps++;
+    }
+    Map<const MatrixX<float>> M(mat.data(), nsnps, nsamples); // read-only
+    JacobiSVD<MatrixXf> svd(M.leftCols(10), Eigen::ComputeThinU | Eigen::ComputeThinV);
+    cout << svd.singularValues() << endl;
     return 0;
 }
 #+end_src
