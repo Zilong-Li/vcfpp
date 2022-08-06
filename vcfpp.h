@@ -400,7 +400,7 @@ namespace vcfpp
          * @return bool
          * */
         template <typename T, typename S = typename T::value_type>
-        isFormatVector<T> getFormat(std::string tag, T& v)
+        isFormatVector<T> getFORMAT(std::string tag, T& v)
         {
             fmt = bcf_get_fmt(header->hdr, line, tag.c_str());
             nvalues = fmt->n;
