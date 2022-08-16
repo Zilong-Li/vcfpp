@@ -2,7 +2,7 @@
 
 [[https://github.com/Zilong-Li/vcfpp/actions/workflows/linux.yml/badge.svg]]
 [[https://github.com/Zilong-Li/vcfpp/actions/workflows/mac.yml/badge.svg]]
-[[https://www.cprogramming.com/c++11/what-is-c++0x.html][https://img.shields.io/badge/Language-C++0x-steelblue.svg]]
+[[https://zilongli.org/proj/vcfpp/index.html][https://img.shields.io/badge/Documentation-latest-blue.svg]]
 [[https://github.com/Zilong-Li/vcfpp/releases/latest][https://img.shields.io/github/v/release/Zilong-Li/vcfpp.svg]]
 [[https://github.com/Zilong-Li/vcfpp/releases][https://img.shields.io/github/downloads/Zilong-Li/vcfpp/total.svg]]
 [[https://img.shields.io/github/license/Zilong-Li/vcfpp?style=plastic.svg]]
