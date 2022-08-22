@@ -305,10 +305,10 @@ namespace vcfpp
         friend class BcfWriter;
 
     public:
-        /** @brief initilize a BcfRecord object using a given BcfHeader object */
-        BcfRecord(BcfHeader& h) : header(std::make_shared<BcfHeader>(h))
+        /** @brief initilize a BcfRecord object using a given BcfHeader object. */
+        BcfRecord(const BcfHeader& h) : header(h)
         {
-            nsamples = header->nSamples();
+            nsamples = header.nSamples();
             typeOfGT.resize(nsamples);
             gtPhase.resize(nsamples);
         }
@@ -328,7 +328,7 @@ namespace vcfpp
         inline std::string asString() const
         {
             kstring_t s = {0, 0, NULL}; // kstring
-            if (vcf_format(header->hdr, line, &s) == 0)
+            if (vcf_format(header.hdr, line, &s) == 0)
                 return std::string(s.s, s.l);
             else
                 throw std::runtime_error("couldn't format current record into a string.\n");
@@ -343,7 +343,7 @@ namespace vcfpp
         isValidGT<T> getGenotypes(T& v)
         {
             ndst = 0;
-            ret = bcf_get_genotypes(header->hdr, line, &gts, &ndst);
+            ret = bcf_get_genotypes(header.hdr, line, &gts, &ndst);
             if (ret <= 1)
                 return false; // gt not present
             // if nploidy is not set manually. find the max nploidy using the first variant (eg. 2) resize v as max(nploidy) * nsamples (ret)
@@ -361,7 +361,7 @@ namespace vcfpp
             // work with nploidy == 1, haploid?
             int i, j, nphased = 0;
             noneMissing = true;
-            fmt = bcf_get_fmt(header->hdr, line, "GT");
+            fmt = bcf_get_fmt(header.hdr, line, "GT");
             int nploidy_cur = ret / nsamples; // requires nploidy_cur <= nploidy
             for (i = 0; i < nsamples; i++)
             {
@@ -402,17 +402,17 @@ namespace vcfpp
         template <typename T, typename S = typename T::value_type>
         isFormatVector<T> getFORMAT(std::string tag, T& v)
         {
-            fmt = bcf_get_fmt(header->hdr, line, tag.c_str());
+            fmt = bcf_get_fmt(header.hdr, line, tag.c_str());
             nvalues = fmt->n;
             ndst = 0;
             S* dst = NULL;
-            int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
-            if (bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_INT & 0xff))
-                ret = bcf_get_format_int32(header->hdr, line, tag.c_str(), &dst, &ndst);
-            else if (bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_REAL & 0xff))
-                ret = bcf_get_format_float(header->hdr, line, tag.c_str(), &dst, &ndst);
-            else if (bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_STR & 0xff))
-                ret = bcf_get_format_char(header->hdr, line, tag.c_str(), &dst, &ndst);
+            int tag_id = bcf_hdr_id2int(header.hdr, BCF_DT_ID, tag.c_str());
+            if (bcf_hdr_id2type(header.hdr, BCF_HL_FMT, tag_id) == (BCF_HT_INT & 0xff))
+                ret = bcf_get_format_int32(header.hdr, line, tag.c_str(), &dst, &ndst);
+            else if (bcf_hdr_id2type(header.hdr, BCF_HL_FMT, tag_id) == (BCF_HT_REAL & 0xff))
+                ret = bcf_get_format_float(header.hdr, line, tag.c_str(), &dst, &ndst);
+            else if (bcf_hdr_id2type(header.hdr, BCF_HL_FMT, tag_id) == (BCF_HT_STR & 0xff))
+                ret = bcf_get_format_char(header.hdr, line, tag.c_str(), &dst, &ndst);
             if (ret >= 0)
             {
                 // user have to check if there is missing in the return v;
@@ -433,14 +433,14 @@ namespace vcfpp
          * */
         bool getFORMAT(std::string tag, std::vector<std::string>& v)
         {
-            fmt = bcf_get_fmt(header->hdr, line, tag.c_str());
+            fmt = bcf_get_fmt(header.hdr, line, tag.c_str());
             nvalues = fmt->n;
             // if ndst < (fmt->n+1)*nsmpl; then realloc is involved
             ret = -1, ndst = 0;
             char** dst = NULL;
-            int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
-            if (bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_STR & 0xff))
-                ret = bcf_get_format_string(header->hdr, line, tag.c_str(), &dst, &ndst);
+            int tag_id = bcf_hdr_id2int(header.hdr, BCF_DT_ID, tag.c_str());
+            if (bcf_hdr_id2type(header.hdr, BCF_HL_FMT, tag_id) == (BCF_HT_STR & 0xff))
+                ret = bcf_get_format_string(header.hdr, line, tag.c_str(), &dst, &ndst);
             if (ret > 0)
             {
                 v.clear();
@@ -466,17 +466,17 @@ namespace vcfpp
         template <typename T, typename S = typename T::value_type>
         isInfoVector<T> getINFO(std::string tag, T& v)
         {
-            info = bcf_get_info(header->hdr, line, tag.c_str());
+            info = bcf_get_info(header.hdr, line, tag.c_str());
             S* dst = NULL;
             ndst = 0;
             ret = -1;
             if (info->type == BCF_BT_INT8 || info->type == BCF_BT_INT16 || info->type == BCF_BT_INT32)
             {
-                ret = bcf_get_info_int32(header->hdr, line, tag.c_str(), &dst, &ndst);
+                ret = bcf_get_info_int32(header.hdr, line, tag.c_str(), &dst, &ndst);
             }
             else if (info->type == BCF_BT_FLOAT)
             {
-                ret = bcf_get_info_float(header->hdr, line, tag.c_str(), &dst, &ndst);
+                ret = bcf_get_info_float(header.hdr, line, tag.c_str(), &dst, &ndst);
             }
             if (ret >= 0)
                 v = std::vector<S>(dst, dst + ret); // user have to check if there is missing in the return v;
@@ -494,7 +494,7 @@ namespace vcfpp
         template <typename T>
         isScalar<T> getINFO(std::string tag, T& v)
         {
-            info = bcf_get_info(header->hdr, line, tag.c_str());
+            info = bcf_get_info(header.hdr, line, tag.c_str());
             // scalar value
             if (info->len == 1)
             {
@@ -523,7 +523,7 @@ namespace vcfpp
         template <typename T>
         isString<T> getINFO(std::string tag, T& v)
         {
-            info = bcf_get_info(header->hdr, line, tag.c_str());
+            info = bcf_get_info(header.hdr, line, tag.c_str());
             if (info->type == BCF_BT_CHAR)
                 v = std::string(reinterpret_cast<char*>(info->vptr), info->vptr_len);
             else
@@ -541,14 +541,14 @@ namespace vcfpp
         {
             ret = -1;
             // bcf_hrec_set_val
-            // bcf_update_info_flag(header->hdr, line, tag.c_str(), NULL, 1);
-            int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
-            if (bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_INT & 0xff))
-                ret = bcf_update_info_int32(header->hdr, line, tag.c_str(), &v, 1);
-            else if (bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_REAL & 0xff))
+            // bcf_update_info_flag(header.hdr, line, tag.c_str(), NULL, 1);
+            int tag_id = bcf_hdr_id2int(header.hdr, BCF_DT_ID, tag.c_str());
+            if (bcf_hdr_id2type(header.hdr, BCF_HL_INFO, tag_id) == (BCF_HT_INT & 0xff))
+                ret = bcf_update_info_int32(header.hdr, line, tag.c_str(), &v, 1);
+            else if (bcf_hdr_id2type(header.hdr, BCF_HL_INFO, tag_id) == (BCF_HT_REAL & 0xff))
             {
                 float v2 = static_cast<float>(v);
-                ret = bcf_update_info_float(header->hdr, line, tag.c_str(), &v2, 1);
+                ret = bcf_update_info_float(header.hdr, line, tag.c_str(), &v2, 1);
             }
             if (ret < 0)
             {
@@ -570,14 +570,14 @@ namespace vcfpp
         isValidInfo<T> setINFO(std::string tag, const T& v)
         {
             ret = -1;
-            // bcf_update_info_flag(header->hdr, line, tag.c_str(), NULL, 1);
-            int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
-            if (bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_INT & 0xff))
-                ret = bcf_update_info_int32(header->hdr, line, tag.c_str(), v.data(), v.size());
-            else if (bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_REAL & 0xff))
-                ret = bcf_update_info_float(header->hdr, line, tag.c_str(), v.data(), v.size());
-            else if (bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_STR & 0xff))
-                ret = bcf_update_info_string(header->hdr, line, tag.c_str(), v.data());
+            // bcf_update_info_flag(header.hdr, line, tag.c_str(), NULL, 1);
+            int tag_id = bcf_hdr_id2int(header.hdr, BCF_DT_ID, tag.c_str());
+            if (bcf_hdr_id2type(header.hdr, BCF_HL_INFO, tag_id) == (BCF_HT_INT & 0xff))
+                ret = bcf_update_info_int32(header.hdr, line, tag.c_str(), v.data(), v.size());
+            else if (bcf_hdr_id2type(header.hdr, BCF_HL_INFO, tag_id) == (BCF_HT_REAL & 0xff))
+                ret = bcf_update_info_float(header.hdr, line, tag.c_str(), v.data(), v.size());
+            else if (bcf_hdr_id2type(header.hdr, BCF_HL_INFO, tag_id) == (BCF_HT_STR & 0xff))
+                ret = bcf_update_info_string(header.hdr, line, tag.c_str(), v.data());
             if (ret < 0)
                 throw std::runtime_error("couldn't set " + tag + " for this variant.\nplease add the tag in header first.\n");
             else
@@ -588,13 +588,13 @@ namespace vcfpp
         void removeINFO(std::string tag)
         {
             ret = -1;
-            int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
-            if (bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_INT & 0xff))
-                ret = bcf_update_info_int32(header->hdr, line, tag.c_str(), NULL, 0);
-            else if (bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_REAL & 0xff))
-                ret = bcf_update_info_float(header->hdr, line, tag.c_str(), NULL, 0);
-            else if (bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_STR & 0xff))
-                ret = bcf_update_info_string(header->hdr, line, tag.c_str(), NULL);
+            int tag_id = bcf_hdr_id2int(header.hdr, BCF_DT_ID, tag.c_str());
+            if (bcf_hdr_id2type(header.hdr, BCF_HL_INFO, tag_id) == (BCF_HT_INT & 0xff))
+                ret = bcf_update_info_int32(header.hdr, line, tag.c_str(), NULL, 0);
+            else if (bcf_hdr_id2type(header.hdr, BCF_HL_INFO, tag_id) == (BCF_HT_REAL & 0xff))
+                ret = bcf_update_info_float(header.hdr, line, tag.c_str(), NULL, 0);
+            else if (bcf_hdr_id2type(header.hdr, BCF_HL_INFO, tag_id) == (BCF_HT_STR & 0xff))
+                ret = bcf_update_info_string(header.hdr, line, tag.c_str(), NULL);
             if (ret < 0)
             {
                 throw std::runtime_error("couldn't remove " + tag + " for this variant.\n");
@@ -611,7 +611,7 @@ namespace vcfpp
         {
             // bcf_gt_type
             ndst = 0;
-            ret = bcf_get_genotypes(header->hdr, line, &gts, &ndst);
+            ret = bcf_get_genotypes(header.hdr, line, &gts, &ndst);
             if (ret <= 0)
                 return false; // gt not present
             assert(ret == v.size());
@@ -628,7 +628,7 @@ namespace vcfpp
                         gts[k] = bcf_gt_unphased(v[k]);
                 }
             }
-            if (bcf_update_genotypes(header->hdr, line, gts, ret) < 0)
+            if (bcf_update_genotypes(header.hdr, line, gts, ret) < 0)
                 throw std::runtime_error("couldn't set genotypes correctly.\n");
             else
                 return true;
@@ -654,13 +654,13 @@ namespace vcfpp
         isValidFMT<T> setFORMAT(std::string tag, const T& v)
         {
             ret = -1;
-            int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
-            if (bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_INT & 0xff))
-                ret = bcf_update_format_int32(header->hdr, line, tag.c_str(), v.data(), v.size());
-            else if (bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_STR & 0xff))
-                ret = bcf_update_format_char(header->hdr, line, tag.c_str(), v.data(), v.size());
-            else if (bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_REAL & 0xff))
-                ret = bcf_update_format_float(header->hdr, line, tag.c_str(), v.data(), v.size());
+            int tag_id = bcf_hdr_id2int(header.hdr, BCF_DT_ID, tag.c_str());
+            if (bcf_hdr_id2type(header.hdr, BCF_HL_FMT, tag_id) == (BCF_HT_INT & 0xff))
+                ret = bcf_update_format_int32(header.hdr, line, tag.c_str(), v.data(), v.size());
+            else if (bcf_hdr_id2type(header.hdr, BCF_HL_FMT, tag_id) == (BCF_HT_STR & 0xff))
+                ret = bcf_update_format_char(header.hdr, line, tag.c_str(), v.data(), v.size());
+            else if (bcf_hdr_id2type(header.hdr, BCF_HL_FMT, tag_id) == (BCF_HT_REAL & 0xff))
+                ret = bcf_update_format_float(header.hdr, line, tag.c_str(), v.data(), v.size());
             if (ret < 0)
                 throw std::runtime_error("couldn't set format " + tag + " correctly.\n");
             return true;
@@ -678,11 +678,11 @@ namespace vcfpp
         {
             ret = -1;
             float v2 = v;
-            int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
-            if (bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_INT & 0xff))
-                ret = bcf_update_format_int32(header->hdr, line, tag.c_str(), &v, 1);
-            else if (bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_REAL & 0xff))
-                ret = bcf_update_format_float(header->hdr, line, tag.c_str(), &v2, 1);
+            int tag_id = bcf_hdr_id2int(header.hdr, BCF_DT_ID, tag.c_str());
+            if (bcf_hdr_id2type(header.hdr, BCF_HL_FMT, tag_id) == (BCF_HT_INT & 0xff))
+                ret = bcf_update_format_int32(header.hdr, line, tag.c_str(), &v, 1);
+            else if (bcf_hdr_id2type(header.hdr, BCF_HL_FMT, tag_id) == (BCF_HT_REAL & 0xff))
+                ret = bcf_update_format_float(header.hdr, line, tag.c_str(), &v2, 1);
             if (ret < 0)
                 throw std::runtime_error("couldn't set format " + tag + " correctly.\n");
             return true;
@@ -694,20 +694,20 @@ namespace vcfpp
             std::vector<char> str(vcfline.begin(), vcfline.end());
             str.push_back('\0');                                         // don't forget string has no \0;
             kstring_t s = {vcfline.length(), vcfline.length(), &str[0]}; // kstring
-            ret = vcf_parse(&s, header->hdr, line);
+            ret = vcf_parse(&s, header.hdr, line);
             if (ret > 0)
                 throw std::runtime_error("error parsing: " + vcfline + "\n");
             if (line->errcode == BCF_ERR_CTG_UNDEF)
             {
-                std::string contig(bcf_hdr_id2name(header->hdr, line->rid));
-                hdr_d = bcf_hdr_dup(header->hdr);
-                header->hrec = bcf_hdr_id2hrec(hdr_d, BCF_DT_CTG, 0, line->rid);
-                if (header->hrec == NULL)
+                std::string contig(bcf_hdr_id2name(header.hdr, line->rid));
+                hdr_d = bcf_hdr_dup(header.hdr);
+                header.hrec = bcf_hdr_id2hrec(hdr_d, BCF_DT_CTG, 0, line->rid);
+                if (header.hrec == NULL)
                     throw std::runtime_error("contig" + contig + " unknow and not found in the header.\n");
-                ret = bcf_hdr_add_hrec(header->hdr, header->hrec);
+                ret = bcf_hdr_add_hrec(header.hdr, header.hrec);
                 if (ret < 0)
                     throw std::runtime_error("error adding contig " + contig + " to header.\n");
-                ret = bcf_hdr_sync(header->hdr);
+                ret = bcf_hdr_sync(header.hdr);
             }
         }
 
@@ -720,7 +720,7 @@ namespace vcfpp
         /** @brief return boolean value indicates if current variant is Structual Variant or not */
         inline bool isSV() const
         {
-            if (bcf_get_info(header->hdr, line, "SVTYPE") == NULL)
+            if (bcf_get_info(header.hdr, line, "SVTYPE") == NULL)
                 return false;
             else
                 return true;
@@ -793,7 +793,7 @@ namespace vcfpp
         /** @brief return CHROM name */
         inline std::string CHROM() const
         {
-            return std::string(bcf_hdr_id2name(header->hdr, line->rid));
+            return std::string(bcf_hdr_id2name(header.hdr, line->rid));
         }
 
         /** @brief return ID field */
@@ -862,14 +862,14 @@ namespace vcfpp
             }
             else if (line->d.n_flt == 1)
             {
-                return std::string(bcf_hdr_int2id(header->hdr, BCF_DT_ID, line->d.flt[0]));
+                return std::string(bcf_hdr_int2id(header.hdr, BCF_DT_ID, line->d.flt[0]));
             }
             else
             {
                 std::string s;
                 for (int i = 1; i < line->d.n_flt; i++)
                 {
-                    s += std::string(bcf_hdr_int2id(header->hdr, BCF_DT_ID, line->d.flt[i])) + ",";
+                    s += std::string(bcf_hdr_int2id(header.hdr, BCF_DT_ID, line->d.flt[i])) + ",";
                 }
                 s.pop_back();
                 return s;
@@ -916,7 +916,7 @@ namespace vcfpp
         int nvalues = 0;
 
     private:
-        std::shared_ptr<BcfHeader> header;
+        BcfHeader header;
         bcf1_t* line = bcf_init(); // current bcf record
         bcf_hdr_t* hdr_d;          // a dup header by bcf_hdr_dup(header->hdr)
         bcf_fmt_t* fmt = NULL;
@@ -983,6 +983,12 @@ namespace vcfpp
             nsamples = bcf_hdr_nsamples(header.hdr);
             setRegion(region);
             SamplesName = header.getSamples();
+        }
+
+        /// return a BcfHeader object
+        const BcfHeader& getHeader() const
+        {
+            return header;
         }
 
         /// open a VCF/BCF/STDIN file for streaming in
@@ -1070,7 +1076,7 @@ namespace vcfpp
                     int slen = tbx_itr_next(fp, tidx, itr, &s);
                     if (slen > 0)
                     {
-                        ret = vcf_parse(&s, r.header->hdr, r.line); // ret > 0, error
+                        ret = vcf_parse(&s, r.header.hdr, r.line); // ret > 0, error
                         bcf_unpack(r.line, BCF_UN_ALL);
                     }
                     return (ret <= 0) && (slen > 0);
@@ -1078,7 +1084,7 @@ namespace vcfpp
             }
             else
             {
-                ret = bcf_read(fp, r.header->hdr, r.line);
+                ret = bcf_read(fp, r.header.hdr, r.line);
                 // unpack record immediately. not lazy
                 bcf_unpack(r.line, BCF_UN_ALL);
                 return (ret == 0);
@@ -1235,7 +1241,7 @@ namespace vcfpp
         {
             if (!isHeaderWritten)
                 writeHeader();
-            if (bcf_write(fp, v.header->hdr, v.line) < 0)
+            if (bcf_write(fp, v.header.hdr, v.line) < 0)
                 return false;
             else
                 return true;
