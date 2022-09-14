@@ -1,0 +1,6 @@
+#+title: Tools built with vcfpp
+
+
+* PBWT query
+- build pbwt indices
+- query the best matches given a sequence
