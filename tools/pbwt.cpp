@@ -1,5 +1,7 @@
 // -*- compile-command: "g++ pbwt.cpp -o pbwt -std=c++17 -g -O3 -Wall -lhts -lz -lm -lbz2 -llzma -lcurl && ./pbwt " -*-
 #include <fstream>
+#include <cstdlib>
+#include <cmath>
 #include <vcfpp.h>
 
 using namespace std;
@@ -28,16 +30,21 @@ void pbwt_index(const std::string& vcffile, const std::string& samples, const st
     int N = nsnps, M = nsamples * 2;
     std::ofstream ofpbwt(vcffile + ".pbwt", std::ios::binary);
     std::ofstream ofauxu(vcffile + ".auxu", std::ios::binary);
-    std::ofstream ofauxv(vcffile + ".auxv", std::ios::binary);
     ofpbwt.write(reinterpret_cast<char*>(&N), 4);
     ofpbwt.write(reinterpret_cast<char*>(&M), 4);
-    std::vector<uint> at(M), a(M), a0(M), a1(M), u(M + 1), v(M + 1);
-    uint i, j, u_, v_, a_;
+    std::vector<uint> at(M), a(M), a0(M), a1(M), u(M + 1);
+    int i, j, u_, v_, a_;
+    // std::srand(seed);
+    // std::vector<uint> selects; // random selecting points every Step size
+    // for (i = 1; i < std::floor(N / M); i++)
+    //     selects.push_back(i * Step + std::rand() % Step);
+    // if (!ofpbwt.write(reinterpret_cast<char*>(&selects[0]), selects.size() * 4))
+    //     throw std::runtime_error(strerror(errno));
     for (j = 0; j < N; j++)
     {
         u_ = 0;
         v_ = 0;
-        // copy a to at
+        // copy a to at, which stands for previous a at j - 1
         for (i = 0; i < M; i++)
         {
             at[i] = a[i];
@@ -46,17 +53,14 @@ void pbwt_index(const std::string& vcffile, const std::string& samples, const st
         {
             a_ = j > 0 ? at[i] : i;
             u[i] = u_;
-            v[i] = v_;
             if (x[j][a_])
                 a1[v_++] = a_;
             else
                 a0[u_++] = a_;
         }
         u[M] = u_;
-        v[M] = M;
         for (i = 0; i < M; i++)
         {
-            v[i] += u_;
             if (i < u_)
                 a[i] = a0[i];
             else
@@ -66,8 +70,11 @@ void pbwt_index(const std::string& vcffile, const std::string& samples, const st
             throw std::runtime_error(strerror(errno));
         if (!ofauxu.write(reinterpret_cast<char*>(&u[0]), u.size() * 4))
             throw std::runtime_error(strerror(errno));
-        if (!ofauxv.write(reinterpret_cast<char*>(&v[0]), v.size() * 4))
-            throw std::runtime_error(strerror(errno));
+        // if (selects[k] == j) {
+        //     k++;
+        //     if (!ofpbwt.write(reinterpret_cast<char*>(&a[0]), a.size() * 4))
+        //         throw std::runtime_error(strerror(errno));
+        // }
     }
 }
 
@@ -81,13 +88,11 @@ std::vector<int> pbwt_query(const std::string& vcffile, const std::vector<bool>&
         throw std::runtime_error(strerror(errno));
     assert(z.size() == N);
     std::ifstream ifauxu(vcffile + ".auxu", std::ios::binary);
-    std::ifstream ifauxv(vcffile + ".auxv", std::ios::binary);
-    std::vector<int> t(N), v(M + 1), u(M + 1), a(M);
+    std::vector<int> t(N), u(M + 1), a(M);
     std::vector<int> matches;
     for (i = 0; i < N; i++)
     {
         ifauxu.read(reinterpret_cast<char*>(&u[0]), 4 * (M + 1));
-        ifauxv.read(reinterpret_cast<char*>(&v[0]), 4 * (M + 1));
         if (i == 0)
         {
             t[0] = z[0] ? M : 0;
@@ -95,7 +100,7 @@ std::vector<int> pbwt_query(const std::string& vcffile, const std::vector<bool>&
         else
         {
             if (z[i])
-                t[i] = v[t[i - 1]];
+                t[i] = u[M] + t[i - 1] - u[t[i - 1]];
             else
                 t[i] = u[t[i - 1]];
         }
@@ -146,15 +151,15 @@ int main(int argc, char* argv[])
                   << "     -samples      list of samples to be included or excluded\n"
                   << "     -region       specific region be included\n"
                   << "     -out          output file\n"
-                  << "     -s (=1)       start position of the first selection\n"
                   << "     -L (=2)       number of neighour haplotypes to be selected\n"
                   << "     -S (=8)       make a selection every S SNPs\n"
+                  << "     -seed (=1)    seed for generating random number\n"
                   << "     -help         show help message\n"
                   << std::endl;
         return 1;
     }
     std::string vcfpanel, vcfquery, samples = "-", region, outfile, sequence;
-    int s = 1, L = 2, Step = 8;
+    int seed = 1, L = 2, Step = 8;
     for (int i = 1; i < args.size(); i++)
     {
         if (args[i] == "-vcf-panel")
@@ -169,8 +174,8 @@ int main(int argc, char* argv[])
             region = args[++i];
         if (args[i] == "-out")
             outfile = args[++i];
-        if (args[i] == "-s")
-            s = std::stoi(args[++i]);
+        if (args[i] == "-seed")
+            seed = std::stoi(args[++i]);
         if (args[i] == "-L")
             L = std::stoi(args[++i]);
         if (args[i] == "-S")
@@ -187,7 +192,7 @@ int main(int argc, char* argv[])
             std::vector<bool> z(sequence.size());
             for (int i = 0; i < sequence.size(); i++)
                 z[i] = (sequence[i] == '1');
-            auto res = pbwt_query(vcfpanel, z, s, L, Step);
+            auto res = pbwt_query(vcfpanel, z, seed, L, Step);
             // print out results
             for (auto& o : res)
                 std::cout << o << std::endl;
