@@ -1,3 +1,11 @@
+# Ignore all
+*
+# Unignore all with extensions
+!*.*
+# Unignore all dirs
+!*/
+### Above combination will ignore all files without extension ###
+
 .DS_Store
 .idea
 *.log
@@ -11,3 +19,4 @@ compile_commands.json
 *.o
 *log
 *gz*
+*dSYM
