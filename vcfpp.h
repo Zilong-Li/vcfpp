@@ -974,14 +974,15 @@ namespace vcfpp
          *                  ^LIST : exclude samples from list \n
          *                  "-" : include all samples \n
          *                  "" : exclude all samples
-         *  @param region samtools-like region "chr:start-end"
+         *  @param region samtools-like region "chr:start-end", skip if empty
          */
         BcfReader(const std::string& file, const std::string& samples, const std::string& region) : fname(file)
         {
             Open(file);
             header.setSamples(samples);
             nsamples = bcf_hdr_nsamples(header.hdr);
-            setRegion(region);
+            if (!region.empty())
+                setRegion(region);
             SamplesName = header.getSamples();
         }
 

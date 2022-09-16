@@ -158,7 +158,7 @@ int main(int argc, char* argv[])
                   << std::endl;
         return 1;
     }
-    std::string vcfpanel, vcfquery, samples = "-", region, outfile, sequence;
+    std::string vcfpanel, vcfquery, samples = "-", region = "", outfile, sequence;
     int seed = 1, L = 2, Step = 8;
     for (int i = 1; i < args.size(); i++)
     {
