@@ -34,12 +34,6 @@ void pbwt_index(const std::string& vcffile, const std::string& samples, const st
     ofpbwt.write(reinterpret_cast<char*>(&M), 4);
     std::vector<uint> at(M), a(M), a0(M), a1(M), u(M + 1);
     int i, j, u_, v_, a_;
-    // std::srand(seed);
-    // std::vector<uint> selects; // random selecting points every Step size
-    // for (i = 1; i < std::floor(N / M); i++)
-    //     selects.push_back(i * Step + std::rand() % Step);
-    // if (!ofpbwt.write(reinterpret_cast<char*>(&selects[0]), selects.size() * 4))
-    //     throw std::runtime_error(strerror(errno));
     for (j = 0; j < N; j++)
     {
         u_ = 0;
@@ -70,11 +64,6 @@ void pbwt_index(const std::string& vcffile, const std::string& samples, const st
             throw std::runtime_error(strerror(errno));
         if (!ofauxu.write(reinterpret_cast<char*>(&u[0]), u.size() * 4))
             throw std::runtime_error(strerror(errno));
-        // if (selects[k] == j) {
-        //     k++;
-        //     if (!ofpbwt.write(reinterpret_cast<char*>(&a[0]), a.size() * 4))
-        //         throw std::runtime_error(strerror(errno));
-        // }
     }
 }
 
