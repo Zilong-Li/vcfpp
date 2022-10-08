@@ -22,14 +22,16 @@ Features:
 - [[#examples][Examples]]
   - [[#calculate-the-heterozygosity-rate][Calculate the heterozygosity rate]]
   - [[#infer-population-structure-with-pca][Infer population structure with PCA]]
-  - [[#build-pbwt-index-from-haplotype-data][Build PBWT index from haplotype data]]
+- [[#tools][Tools]]
 #+END_QUOTE
 
 * Installation
 - download the released [[https://github.com/Zilong-Li/vcfpp/releases/latest][vcfpp.h]] and include it in your program.
 - make sure you have https://github.com/samtools/htslib installed on your system and the it is in your environment.
+
 * Examples
 You can copy paste the example code into a =example.cpp= file and compile it by =g++ example.cpp -std=c++11 -O2 -Wall -I. -lhts -lz -lm -lbz2 -llzma -lcurl=
+
 ** Calculate the heterozygosity rate
 
 Let's count the number of heterozygous sites for each sample in all records. The core is *just 10 lines*.
@@ -88,7 +90,6 @@ int main(int argc, char* argv[])
 
 We need the [[https://eigen.tuxfamily.org/dox/index.html][Eigen]] library to deal with linear algebra. To infer population structure using PCA, we first construct the genotype matrix (0,1,2) and standardize it under HWE assumption. Then we perform SVD on the standardized matrix to get the PCs.
 
-
 #+begin_src C++
 #include "vcfpp.h"
 #include <Eigen/Dense>
@@ -124,49 +125,5 @@ int main(int argc, char* argv[])
     return 0;
 }
 #+end_src
-** Build PBWT index from haplotype data
-
-Here is a clean example of building Durbin's [[https://github.com/richarddurbin/pbwt][PBWT]] structure using native C++. Depending on your project's needs, you should be able to modify it to return other useful matrix, such as divergence matrix (=d=) and FM-index matrix (=u=, =v=).
-
-#+begin_src C++
-void pbwt() {
-    BcfReader vcf("http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000G_2504_high_coverage/working/20220422_3202_phased_SNV_INDEL_SV/1kGP_high_coverage_Illumina.chr22.filtered.SNV_INDEL_SV_phased_panel.vcf.gz", "-", "chr22:16050075-16050655");
-    BcfRecord v(vcf.header);
-    vector<bool> gt;
-    vector<vector<bool>> x;
-    int nsnps = 0, nsamples = vcf.nsamples;
-    while (vcf.getNextVariant(v))
-    {
-        if (!v.isSNP()) continue; // skip other type of variants
-        v.getGenotypes(gt);x.push_back(gt);
-        nsnps++;
-    }
-    int N = nsnps, M = nsamples * 2;
-    vector<vector<int>> a(N, vector<int>(M)); // this is the index matrix to be retured
-    vector<int> a0(M), a1(M), d0(M), d1(M), d(M); // note: to output divergence matrix, make d as two dimensional N x M.
-    int i = 0, j = 0, u_ = 0, v_ = 0, p = 0, q = 0, d_, a_;
-    for (j = 0; j < N; j++) {
-        for (i = 0; i < M; i++) {
-            d_ = j > 0 ? d[i] : 0;
-            a_ = j > 0 ? a[j-1][i] : i;
-            p = max(p, d_); q = max(q, d_);
-            if (x[j][a_]) {
-                a1[v_] = a_; d1[v_] = q;
-                v_++; q = 0;
-            } else {
-                a0[u_] = a_; d0[u_] = p;
-                u_++; p = 0;
-            }
-        }
-        for (i = 0; i < M; i++) {
-            if (i < u_) {
-                a[j][i] = a0[i];
-                d[i] = d0[i];
-            } else {
-                a[j][i] = a1[i - u_];
-                d[i] = d1[i - u_];
-            }
-        }
-    } // return a
-}
-#+end_src
+* Tools
+Find more useful algorithms/tools with VCF/BCF input in [[tools]]
