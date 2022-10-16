@@ -10,14 +10,17 @@ int main(int argc, char* argv[])
     std::vector<std::string> args(argv + 1, argv + argc);
     if (argc <= 1 || args[0] == "-h" || args[0] == "-help")
     {
-        std::cout << "Usage example:\n"
+        std::cout << "Description:\n"
+                  << "      create DS tag for diploid samples given GP tag from input vcf file\n\n"
+                  << "Usage example:\n"
                   << "     " + (std::string)argv[0] + " -i in.bcf -o out.bcf \n"
                   << "     " + (std::string)argv[0] + " -i in.bcf -o out.bcf -s ^S1,S2 -r chr1:1-1000 \n"
+                  << "      bcftools view in.bcf | " + (std::string)argv[0] + " -i - -o out.bcf \n"
                   << "\nOptions:\n"
                   << "     -i    vcf/bcf file of reference panel\n"
                   << "     -o    vcf/bcf file of query sequence\n"
                   << "     -s    list of samples to be included or excluded\n"
-                  << "     -r     specific region be included\n"
+                  << "     -r    specific region be included\n"
                   << std::endl;
         return 1;
     }
@@ -44,7 +47,6 @@ int main(int argc, char* argv[])
     while (vcf.getNextVariant(var))
     {
         var.getFORMAT("GP", gp); // get GP values
-        // std::cout << gp.size();
         for (int i = 0; i < nsamples; i++)
         {
             ds[i] = gp[i * 3 + 1] + gp[i * 3 + 2] * 2;
