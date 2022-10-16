@@ -1245,6 +1245,7 @@ namespace vcfpp
                 return true;
         }
 
+        /// header object initialized by initalHeader
         BcfHeader header;
 
     private:
