@@ -2,7 +2,7 @@
 #include <fstream>
 #include <cstdlib>
 #include <cmath>
-#include <vcfpp.h>
+#include "../vcfpp.h"
 
 using namespace std;
 using namespace vcfpp;

@@ -2,7 +2,7 @@
  * @file        https://github.com/Zilong-Li/vcfpp/vcfpp.h
  * @author      Zilong Li
  * @email       zilong.dk@gmail.com
- * @version     v0.1.1
+ * @version     v0.1.2
  * @breif       a single C++ file for manipulating VCF
  * Copyright (C) 2022. The use of this code is governed by the LICENSE file.
  ******************************************************************************/
@@ -1147,7 +1147,6 @@ namespace vcfpp
 
         virtual ~BcfWriter()
         {
-            Close();
         }
 
         /**
@@ -1190,16 +1189,14 @@ namespace vcfpp
         /// initial a VCF header using the internal template given a specific version. VCF4.1 is the default
         void initalHeader(std::string version = "VCF4.1")
         {
-            header = BcfHeader();
             header.hdr = bcf_hdr_init("w");
             header.setVersion(version);
         }
 
-        /// initial a VCF header by copying from another header
+        /// initial a VCF header by refering to another vcf header
         void initalHeader(const BcfHeader& h)
         {
-            header = BcfHeader();
-            header.hdr = bcf_hdr_dup(h.hdr); // make a copy of given header
+            header.hdr = h.hdr; // point to another header
             if (header.hdr == NULL)
                 throw std::runtime_error("couldn't copy the header from another vcf.\n");
         }
@@ -1248,8 +1245,7 @@ namespace vcfpp
                 return true;
         }
 
-        /// initialize an empty header;
-        BcfHeader header = BcfHeader();
+        BcfHeader header;
 
     private:
         htsFile* fp = NULL; // hts file
