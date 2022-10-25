@@ -10,6 +10,7 @@
 .idea
 *.log
 a.*
+t.*
 a-*
 .cache
 tmp/

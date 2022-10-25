@@ -54,6 +54,6 @@ int main(int argc, char* argv[])
         var.setFORMAT("DS", ds);
         bw.writeRecord(var);
     }
-    bw.Close();
+    // bw.close();
     return 0;
 }

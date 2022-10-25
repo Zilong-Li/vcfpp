@@ -946,7 +946,7 @@ namespace vcfpp
          */
         BcfReader(const std::string& file) : fname(file)
         {
-            Open(file);
+            open(file);
         }
 
         /**
@@ -960,7 +960,7 @@ namespace vcfpp
          */
         BcfReader(const std::string& file, const std::string& samples) : fname(file)
         {
-            Open(file);
+            open(file);
             header.setSamples(samples);
             nsamples = bcf_hdr_nsamples(header.hdr);
             SamplesName = header.getSamples();
@@ -978,7 +978,7 @@ namespace vcfpp
          */
         BcfReader(const std::string& file, const std::string& samples, const std::string& region) : fname(file)
         {
-            Open(file);
+            open(file);
             header.setSamples(samples);
             nsamples = bcf_hdr_nsamples(header.hdr);
             if (!region.empty())
@@ -993,7 +993,7 @@ namespace vcfpp
         }
 
         /// open a VCF/BCF/STDIN file for streaming in
-        void Open(const std::string& file)
+        void open(const std::string& file)
         {
             fname = file;
             fp = hts_open(file.c_str(), "r");
@@ -1012,7 +1012,7 @@ namespace vcfpp
         }
 
         /// close the BcfReader object.
-        void Close()
+        void close()
         {
             if (fp)
                 hts_close(fp);
@@ -1128,7 +1128,7 @@ namespace vcfpp
          */
         BcfWriter(const std::string& fname)
         {
-            Open(fname);
+            open(fname);
         }
 
         /**
@@ -1142,18 +1142,19 @@ namespace vcfpp
          */
         BcfWriter(const std::string& fname, const std::string& mode)
         {
-            Open(fname, mode);
+            open(fname, mode);
         }
 
         virtual ~BcfWriter()
         {
+            close();
         }
 
         /**
          * @brief          Open VCF/BCF file for writing. The format is infered from file's suffix
          * @param fname    The file name or "-" for stdin/stdout. For indexed files
          */
-        void Open(const std::string& fname)
+        void open(const std::string& fname)
         {
             std::string mode{"w"};
             if (isEndWith(fname, "bcf.gz"))
@@ -1174,16 +1175,18 @@ namespace vcfpp
          *                 [w]z  .. compressed VCF \n
          *                 [w]   .. uncompressed VCF
          */
-        void Open(const std::string& fname, const std::string& mode)
+        void open(const std::string& fname, const std::string& mode)
         {
             fp = hts_open(fname.c_str(), mode.c_str());
         }
 
         /// close the BcfWriter object.
-        void Close()
+        void close()
         {
-            hts_close(fp);
-            bcf_destroy(b);
+            if (fp)
+                hts_close(fp);
+            if (b)
+                bcf_destroy(b);
         }
 
         /// initial a VCF header using the internal template given a specific version. VCF4.1 is the default
