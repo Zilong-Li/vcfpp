@@ -826,6 +826,13 @@ namespace vcfpp
             return std::string(line->d.allele[0]);
         }
 
+        /** @brief swap REF and ALT for biallelic */
+        inline void swap_REF_ALT()
+        {
+            if (!isMultiAllelic())
+                std::swap(line->d.allele[0], line->d.allele[1]);
+        }
+
         /** @brief return raw ALT alleles as string */
         inline std::string ALT() const
         {
