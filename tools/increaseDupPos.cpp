@@ -1,4 +1,4 @@
-// -*- compile-command: "g++ incrementDupPos.cpp -std=c++11 -g -O3 -Wall -lhts -lz -lm -lbz2 -llzma -lcurl" -*-
+// -*- compile-command: "g++ increaseDupPos.cpp -std=c++11 -g -O3 -Wall -lhts -lz -lm -lbz2 -llzma -lcurl" -*-
 #include "../vcfpp.h"
 
 using namespace std;
