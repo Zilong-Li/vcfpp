@@ -808,6 +808,12 @@ namespace vcfpp
             return line->pos + 1;
         }
 
+        /** @brief modify position given 1-based value */
+        inline void setPOS(int64_t p)
+        {
+            line->pos = p - 1;
+        }
+
         /** @brief return 0-base start of the variant (can be any type) */
         inline int64_t Start() const
         {

@@ -1,4 +1,4 @@
-// -*- compile-command: "g++ multiallelics.cpp -std=c++11 -g -O3 -Wall -lhts -lz -lm -lbz2 -llzma -lcurl" -*-
+// -*- compile-command: "g++ incrementDupPos.cpp -std=c++11 -g -O3 -Wall -lhts -lz -lm -lbz2 -llzma -lcurl" -*-
 #include "../vcfpp.h"
 
 using namespace std;
@@ -12,7 +12,7 @@ int main(int argc, char* argv[])
     {
         std::cout << "Author: Zilong-Li (zilong.dk@gmail.com)\n"
                   << "Description:\n"
-                  << "     report multiallelics from input vcf file\n\n"
+                  << "     increment POS for duplicated biallelics sites from sorted vcf\n\n"
                   << "Usage example:\n"
                   << "     " + (std::string)argv[0] + " -i in.bcf -o out.bcf \n"
                   << "     " + (std::string)argv[0] + " -i in.bcf -o out.bcf -s ^S1,S2 -r chr1:1-1000 \n"
@@ -42,10 +42,25 @@ int main(int argc, char* argv[])
     BcfWriter bw(outvcf);
     bw.initalHeader(vcf.header);
     bw.writeHeader();
+    int64_t pos{-1}, count{0};
+    if (vcf.getNextVariant(var))
+    {
+        pos = var.POS();
+        bw.writeRecord(var);
+    }
     while (vcf.getNextVariant(var))
     {
-        if (var.isMultiAllelic())
-            bw.writeRecord(var);
+        if (var.POS() == pos)
+        {
+            count++;
+            var.setPOS(pos + count);
+        }
+        else
+        {
+            pos = var.POS();
+            count = 0;
+        }
+        bw.writeRecord(var);
     }
 
     return 0;
