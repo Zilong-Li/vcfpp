@@ -130,7 +130,10 @@ int main(int argc, char* argv[])
     std::vector<std::string> args(argv + 1, argv + argc);
     if (argc <= 1 || args[0] == "-h" || args[0] == "-help")
     {
-        std::cout << "Usage example:\n"
+        std::cout << "Author: Zilong-Li (zilong.dk@gmail.com)\n"
+                  << "Description:\n"
+                  << "     build bit pbwt indicies and query the neighbouring haps in pbwt panel given a new hap.\n\n"
+                  << "Usage example:\n"
                   << "     " + (std::string)argv[0] + " index -vcf-panel VCF1 -samples ^S1,S2 -region chr1:1-1000 \n"
                   << "     " + (std::string)argv[0] + " query -vcf-panel VCF1 -vcf-query VCF2 -out OUT \n\n"
                   << "Options:\n"
