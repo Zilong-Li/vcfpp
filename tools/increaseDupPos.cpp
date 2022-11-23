@@ -50,7 +50,7 @@ int main(int argc, char* argv[])
     }
     while (vcf.getNextVariant(var))
     {
-        if (var.POS() == pos)
+        if (var.POS() <= pos + count)
         {
             count++;
             var.setPOS(pos + count);
