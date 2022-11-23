@@ -2,7 +2,7 @@
  * @file        https://github.com/Zilong-Li/vcfpp/vcfpp.h
  * @author      Zilong Li
  * @email       zilong.dk@gmail.com
- * @version     v0.1.2
+ * @version     v0.1.3
  * @breif       a single C++ file for manipulating VCF
  * Copyright (C) 2022. The use of this code is governed by the LICENSE file.
  ******************************************************************************/
@@ -317,7 +317,7 @@ namespace vcfpp
         {
         }
 
-        /** @brief print out the variant */
+        /** @brief stream out the variant */
         friend std::ostream& operator<<(std::ostream& out, const BcfRecord& v)
         {
             out << v.asString();
