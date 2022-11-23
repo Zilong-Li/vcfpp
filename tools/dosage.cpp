@@ -39,10 +39,8 @@ int main(int argc, char* argv[])
     }
     BcfReader vcf(invcf, samples, region);
     BcfRecord var(vcf.header);
-    BcfWriter bw(outvcf);
-    bw.initalHeader(vcf.header);
+    BcfWriter bw(outvcf, vcf.header);
     bw.header.addFORMAT("DS", "1", "Float", "Diploid Genotype Dosage"); // add DS tag into the header
-    bw.writeHeader();                                                   // output header
     int nsamples = vcf.nsamples;
     std::vector<float> gp, ds(nsamples);
     while (vcf.getNextVariant(var))
@@ -55,6 +53,6 @@ int main(int argc, char* argv[])
         var.setFORMAT("DS", ds);
         bw.writeRecord(var);
     }
-    // bw.close();
+
     return 0;
 }

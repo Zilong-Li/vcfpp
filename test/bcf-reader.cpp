@@ -1,5 +1,5 @@
 #include "catch.hh"
-#include "vcfpp.h"
+#include "../vcfpp.h"
 
 using namespace vcfpp;
 using namespace std;

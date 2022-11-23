@@ -39,8 +39,7 @@ int main(int argc, char* argv[])
     }
     BcfReader vcf(invcf, samples, region);
     BcfRecord var(vcf.header);
-    BcfWriter bw(outvcf);
-    bw.initalHeader(vcf.header);
+    BcfWriter bw(outvcf, vcf.header);
     std::vector<char> gts;
     while (vcf.getNextVariant(var))
     {
@@ -53,6 +52,6 @@ int main(int argc, char* argv[])
         var.setGenotypes(gts);
         bw.writeRecord(var);
     }
-    // bw.close();
+
     return 0;
 }

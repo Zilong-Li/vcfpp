@@ -1138,24 +1138,55 @@ namespace vcfpp
         /**
          * @brief          Open VCF/BCF file for writing. The format is infered from file's suffix
          * @param fname    The file name or "-" for stdin/stdout. For indexed files
+         * @param version  The output header is constructed with the internal template given a specific version
          */
-        BcfWriter(const std::string& fname)
+        BcfWriter(const std::string& fname, std::string version = "VCF4.1")
         {
             open(fname);
+            initalHeader(version);
+        }
+
+        /**
+         * @brief          Open VCF/BCF file for writing. The format is infered from file's suffix
+         * @param fname    The file name or "-" for stdin/stdout. For indexed files
+         * @param h        The output header is pointing to the given BcfHeader object
+         */
+        BcfWriter(const std::string& fname, const BcfHeader& h)
+        {
+            open(fname);
+            initalHeader(h);
         }
 
         /**
          * @brief          Open VCF/BCF file for writing using given mode
          * @param fname    The file name or "-" for stdin/stdout. For indexed files
+         * @param version  The output header is constructed with the internal template given a specific version
          * @param mode     Mode matching \n
          *                 [w]b  .. compressed BCF \n
          *                 [w]bu .. uncompressed BCF \n
          *                 [w]z  .. compressed VCF \n
          *                 [w]   .. uncompressed VCF
          */
-        BcfWriter(const std::string& fname, const std::string& mode)
+        BcfWriter(const std::string& fname, const std::string& version, const std::string& mode)
         {
             open(fname, mode);
+            initalHeader(version);
+        }
+
+        /**
+         * @brief          Open VCF/BCF file for writing using given mode
+         * @param fname    The file name or "-" for stdin/stdout. For indexed files
+         * @param h        The output header is pointing to the given BcfHeader object
+         * @param mode     Mode matching \n
+         *                 [w]b  .. compressed BCF \n
+         *                 [w]bu .. uncompressed BCF \n
+         *                 [w]z  .. compressed VCF \n
+         *                 [w]   .. uncompressed VCF
+         */
+        BcfWriter(const std::string& fname, const BcfHeader& h, const std::string& mode)
+        {
+            open(fname, mode);
+            initalHeader(h);
         }
 
         virtual ~BcfWriter()
@@ -1196,6 +1227,8 @@ namespace vcfpp
         /// close the BcfWriter object.
         void close()
         {
+            if (!isHeaderWritten)
+                writeHeader();
             if (fp)
                 hts_close(fp);
             if (b)

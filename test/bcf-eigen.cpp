@@ -1,5 +1,5 @@
 #include "catch.hh"
-#include "vcfpp.h"
+#include "../vcfpp.h"
 #include <eigen3/Eigen/Dense>
 
 using namespace vcfpp;

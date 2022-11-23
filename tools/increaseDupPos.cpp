@@ -39,9 +39,7 @@ int main(int argc, char* argv[])
     }
     BcfReader vcf(invcf, samples, region);
     BcfRecord var(vcf.header);
-    BcfWriter bw(outvcf);
-    bw.initalHeader(vcf.header);
-    bw.writeHeader();
+    BcfWriter bw(outvcf, vcf.header);
     int64_t pos{-1}, count{0};
     if (vcf.getNextVariant(var))
     {

@@ -39,9 +39,7 @@ int main(int argc, char* argv[])
     }
     BcfReader vcf(invcf, samples, region);
     BcfRecord var(vcf.header);
-    BcfWriter bw(outvcf);
-    bw.initalHeader(vcf.header);
-    bw.writeHeader();
+    BcfWriter bw(outvcf, vcf.header);
     while (vcf.getNextVariant(var))
     {
         if (var.isMultiAllelic())
