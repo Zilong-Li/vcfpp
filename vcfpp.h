@@ -403,6 +403,8 @@ namespace vcfpp
         isFormatVector<T> getFORMAT(std::string tag, T& v)
         {
             fmt = bcf_get_fmt(header.hdr, line, tag.c_str());
+            if (!fmt)
+                throw std::runtime_error("there is no " + tag + " in FORMAT of this variant.\n");
             nvalues = fmt->n;
             ndst = 0;
             S* dst = NULL;
@@ -421,7 +423,7 @@ namespace vcfpp
             }
             else
             {
-                throw std::runtime_error("couldn't parse the " + tag + " format of this variant.\n");
+                throw std::runtime_error("failed to parse the " + tag + " format of this variant.\n");
             }
         }
 
@@ -434,6 +436,8 @@ namespace vcfpp
         bool getFORMAT(std::string tag, std::vector<std::string>& v)
         {
             fmt = bcf_get_fmt(header.hdr, line, tag.c_str());
+            if (!fmt)
+                throw std::runtime_error("there is no " + tag + " in FORMAT of this variant.\n");
             nvalues = fmt->n;
             // if ndst < (fmt->n+1)*nsmpl; then realloc is involved
             ret = -1, ndst = 0;
@@ -467,6 +471,8 @@ namespace vcfpp
         isInfoVector<T> getINFO(std::string tag, T& v)
         {
             info = bcf_get_info(header.hdr, line, tag.c_str());
+            if (!info)
+                throw std::runtime_error("there is no " + tag + " tag in INFO of this variant.\n");
             S* dst = NULL;
             ndst = 0;
             ret = -1;
@@ -495,6 +501,8 @@ namespace vcfpp
         isScalar<T> getINFO(std::string tag, T& v)
         {
             info = bcf_get_info(header.hdr, line, tag.c_str());
+            if (!info)
+                throw std::runtime_error("there is no " + tag + " tag in INFO of this variant.\n");
             // scalar value
             if (info->len == 1)
             {
@@ -524,6 +532,8 @@ namespace vcfpp
         isString<T> getINFO(std::string tag, T& v)
         {
             info = bcf_get_info(header.hdr, line, tag.c_str());
+            if (!info)
+                throw std::runtime_error("there is no " + tag + " tag in INFO of this variant.\n");
             if (info->type == BCF_BT_CHAR)
                 v = std::string(reinterpret_cast<char*>(info->vptr), info->vptr_len);
             else

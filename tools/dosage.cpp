@@ -12,7 +12,7 @@ int main(int argc, char* argv[])
     {
         std::cout << "Author: Zilong-Li (zilong.dk@gmail.com)\n"
                   << "Description:\n"
-                  << "     create DS tag for diploid samples given GP tag from input vcf file\n\n"
+                  << "     create DS tag for diploid samples given GP or GT tag from input vcf file\n\n"
                   << "Usage example:\n"
                   << "     " + (std::string)argv[0] + " -i in.bcf \n"
                   << "     " + (std::string)argv[0] + " -i in.bcf -o out.bcf -s ^S1,S2 -r chr1:1-1000 \n"
@@ -25,7 +25,7 @@ int main(int argc, char* argv[])
                   << std::endl;
         return 1;
     }
-    std::string invcf, outvcf="-", samples = "-", region = "";
+    std::string invcf, outvcf = "-", samples = "-", region = "";
     for (int i = 0; i < args.size(); i++)
     {
         if (args[i] == "-i")
@@ -43,13 +43,23 @@ int main(int argc, char* argv[])
     BcfWriter bw(outvcf, vcf.header);
     bw.header.addFORMAT("DS", "1", "Float", "Diploid Genotype Dosage"); // add DS tag into the header
     int nsamples = vcf.nsamples;
-    std::vector<float> gp, ds(nsamples);
+    vector<float> gps, ds(nsamples);
+    vector<char> gts;
     while (vcf.getNextVariant(var))
     {
-        var.getFORMAT("GP", gp); // get GP values
-        for (int i = 0; i < nsamples; i++)
+        try
         {
-            ds[i] = gp[i * 3 + 1] + gp[i * 3 + 2] * 2;
+            var.getFORMAT("GP", gps); // try get GP values
+            for (int i = 0; i < nsamples; i++)
+            {
+                ds[i] = gps[i * 3 + 1] + gps[i * 3 + 2] * 2;
+            }
+        }
+        catch (const std::runtime_error& e)
+        {
+            var.getGenotypes(gts);
+            for (int i = 0; i < nsamples; i++)
+                ds[i] = gts[i * 2] + gts[i * 2 + 1];
         }
         var.setFORMAT("DS", ds);
         bw.writeRecord(var);
