@@ -6,7 +6,7 @@ using namespace std;
 
 TEST_CASE("make a vcf from scratch", "[bcf-writer]")
 {
-    BcfWriter bw("new.vcf.gz", "VCF4.3");
+    BcfWriter bw("new.bcf.gz", "VCF4.3");
     bw.header.addContig("21");
     bw.header.addFORMAT("GT", "1", "String", "Genotype");
     bw.header.addFORMAT("PL", "G", "Integer", "List of Phred-scaled genotype likelihoods");

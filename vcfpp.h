@@ -1057,19 +1057,44 @@ namespace vcfpp
             return hts_set_threads(fp, n);
         }
 
+        /** @brief get records of current contig to use */
+        uint64_t get_region_records(const std::string& region)
+        {
+            setRegion(region); // only one chromosome
+            int tid = 0, ret = 0, nseq = 0;
+            uint64_t records, v;
+            if (tidx)
+            {
+                tbx_seqnames(tidx, &nseq);
+            }
+            else
+            {
+                nseq = hts_idx_nseq(hidx);
+            }
+            for (tid = 0; tid < nseq; tid++)
+            {
+                ret = hts_idx_get_stat(tidx ? tidx->idx : hidx, tid, &records, &v);
+                // printf("%" PRIu64 "\n", records);
+                if (ret >= 0 && records > 0)
+                    return records;
+            }
+            return 0;
+        }
+
         /**
          * @brief explicitly stream to specific region
          * @param region the string is samtools-like format which is chr:start-end
          * */
         void setRegion(const std::string& region)
         {
-            // TODO reset current region. seek to the first record.
             // 1. check and load index first
             // 2. query iterval region
             if (isEndWith(fname, "bcf") || isEndWith(fname, "bcf.gz"))
             {
                 isBcf = true;
                 hidx = bcf_index_load(fname.c_str());
+                if (itr)
+                    bcf_itr_destroy(itr); // reset current region.
                 itr = bcf_itr_querys(hidx, header.hdr, region.c_str());
             }
             else
@@ -1077,6 +1102,8 @@ namespace vcfpp
                 isBcf = false;
                 tidx = tbx_index_load(fname.c_str());
                 assert(tidx != NULL && "error loading tabix index!");
+                if (itr)
+                    tbx_itr_destroy(itr); // reset current region.
                 itr = tbx_itr_querys(tidx, region.c_str());
                 assert(itr != NULL && "no interval region found.failed!");
             }
