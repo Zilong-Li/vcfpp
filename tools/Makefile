@@ -1,7 +1,7 @@
 HTSINC   = /usr/local/include
 HTSLIB   = /usr/local/lib
 CXX      = g++
-CXXFLAGS = -std=c++11 -Wall -O3
+CXXFLAGS = -std=c++17 -Wall -O3
 INC      =  -I$(HTSINC)
 LDFLAGS  =  -L$(HTSLIB) -Wl,-rpath,$(HTSLIB)
 LIBS     = -lhts -lz -lm -lbz2 -llzma -lcurl -lpthread
