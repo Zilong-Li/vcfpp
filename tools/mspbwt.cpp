@@ -16,14 +16,14 @@ using IntMap = unordered_map<int, int>;
 using IntVecMap = unordered_map<int, std::vector<int>>;
 using WgSymbolMap = map<int, map<int, int>>;
 
-void cout_WgSymbolMap(const WgSymbolMap& wg);
-vector<int> encodeZ(const vector<bool>& z, int G);
+void coutWgSymbolMap(const WgSymbolMap& wg);
+vector<int> encode_z2grid(const vector<bool>& z, int G);
 vector<bool> randhapz(int M);
 int find_closest_symbol2zg(int zg, const std::set<int>& symbols);
-IntMap build_C(const vector<int>& x);
+IntMap build_C(const vector<int>& x, const set<int>& s);
 IntMap save_Symbols(const vector<int>& x);
-WgSymbolMap save_W(const vector<int>& x);
-IntVecMap build_W(const vector<int>& x);
+WgSymbolMap save_W(const vector<int>& x, const set<int>& s);
+IntVecMap build_W(const vector<int>& x, const set<int>& s, const IntMap& C);
 void mspbwt(const std::string& vcffile, const std::string& samples, const std::string& region);
 
 int main(int argc, char* argv[])
@@ -65,7 +65,7 @@ int main(int argc, char* argv[])
     return 0;
 }
 
-vector<int> encodeZ(const vector<bool>& z, int G)
+vector<int> encode_z2grid(const vector<bool>& z, int G)
 {
     vector<int> zg(G);
     const int B = 32;
@@ -91,7 +91,7 @@ vector<int> encodeZ(const vector<bool>& z, int G)
     return zg;
 }
 
-void cout_WgSymbolMap(const WgSymbolMap& wg)
+void coutWgSymbolMap(const WgSymbolMap& wg)
 {
     auto print_key_value = [](const auto& key, const auto& value) { std::cout << "Index:[" << key << "] rank:[" << value << "]\n"; };
     for (const auto& [s, v] : wg)
@@ -140,9 +140,8 @@ IntMap save_Symbols(const vector<int>& x)
     return symbols;
 }
 
-IntMap build_C(const vector<int>& x)
+IntMap build_C(const vector<int>& x, const set<int>& s)
 {
-    set<int> s(x.begin(), x.end()); // convert to set which unique sorted
     IntMap C;
     int c{0}, n{0}, cap{0};
     for (const auto& si : s)
@@ -161,9 +160,8 @@ IntMap build_C(const vector<int>& x)
     return C;
 }
 
-WgSymbolMap save_W(const vector<int>& x)
+WgSymbolMap save_W(const vector<int>& x, const set<int>& s)
 {
-    set<int> s(x.begin(), x.end()); // convert to set which unique sorted
     size_t i{0}, k{0};
     WgSymbolMap W;
     for (const auto& si : s)
@@ -179,13 +177,11 @@ WgSymbolMap save_W(const vector<int>& x)
     return W;
 }
 
-IntVecMap build_W(const vector<int>& x)
+IntVecMap build_W(const vector<int>& x, const set<int>& s, const IntMap& C)
 {
-    set<int> s(x.begin(), x.end()); // convert to set which unique sorted
-    auto C = build_C(x);
     int c{0}, i{0}, n{0}, cap{0};
     IntVecMap W;
-    for (auto& si : s)
+    for (const auto& si : s)
     {
         W[si] = vector<int>(x.size());
         c = 0;
@@ -193,7 +189,7 @@ IntVecMap build_W(const vector<int>& x)
         {
             if (x[i] == si)
                 c++;
-            W[si][i] = c + C[si];
+            W[si][i] = c + C.at(si);
         }
         if (++n == cap && cap > 0)
             break;
@@ -214,7 +210,7 @@ void mspbwt(const std::string& vcffile, const std::string& samples, const std::s
     cerr << "Haps(N):" << N << "\tSNPs(M):" << M << "\tGrids(G):" << G << "\tInt(B):" << B << endl;
     vector<vector<int>> X; // Grids x Haps
     X.resize(G, vector<int>(N));
-    vcf.setRegion(region);
+    vcf.setRegion(region); // seek back to region
     vector<bool> gt;
     while (vcf.getNextVariant(var))
     {
@@ -255,31 +251,28 @@ void mspbwt(const std::string& vcffile, const std::string& samples, const std::s
         }
         for (i = 0; i < N; i++)
             y0[i] = X[k][a0[i]];
-        auto Wg = build_W(y0); // here Wg is S x N
+        set<int> s(y0.begin(), y0.end()); // convert to set which unique sorted
+        C[k] = build_C(y0, s);
+        auto Wg = build_W(y0, s, C[k]); // here Wg is S x N
         for (i = 0; i < N; i++)
-        {
             A[k + 1][Wg[y0[i]][i] - 1] = a0[i];
-        }
         // next run
         a0 = A[k + 1];
-        // save current W, which is of N+2*S length only. NB first two elements are rank, C[si]
-        W[k] = save_W(y0);
-        C[k] = build_C(y0);
+        // here save current W, which differs from the previous complete table
+        W[k] = save_W(y0, s);
     }
 
     // finially insert zg back to A at each grid
     auto z = randhapz(M);
-    auto zg = encodeZ(z, G);
+    auto zg = encode_z2grid(z, G);
     vector<int> ta(G);
     k = 0;
-    // search for the closest symbol to zg[k] in W[k].keys() if not exists
+    // binary search for the closest symbol to zg[k] in W[k]->keys if not exists
     auto wz = W[k].lower_bound(zg[k]) != W[k].end() ? *W[k].lower_bound(zg[k]) : *W[k].crbegin();
     for (const auto& si : W[k])
-    {
         cerr << si.first << ",";
-    }
     cerr << "\nzg:" << zg[k] << "\t" << wz.first << endl;
-    cout_WgSymbolMap(W[k]);
+    // coutWgSymbolMap(W[k]);
     // for k=0, start with random occurrence of the symbol. and put zg at that position
     ta[k] = wz.second.cbegin()->first;
     cerr << "k:" << k << "\tclosest symbol to zg:" << wz.first << "\torder in a[k]:" << ta[k] << endl;
@@ -287,8 +280,7 @@ void mspbwt(const std::string& vcffile, const std::string& samples, const std::s
     for (k = 1; k < G; k++)
     {
         auto wz = W[k].lower_bound(zg[k]) != W[k].end() ? *W[k].lower_bound(zg[k]) : *W[k].crbegin();
-        auto wi = wz.second.lower_bound(ta[k-1]) != wz.second.end() ? *wz.second.lower_bound(ta[k-1]) : *wz.second.crbegin();
+        auto wi = wz.second.lower_bound(ta[k - 1]) != wz.second.end() ? *wz.second.lower_bound(ta[k - 1]) : *wz.second.crbegin();
         ta[k] = wi.second + C[k][wz.first];
-        cerr << "k:" << k << "\tclosest symbol to zg:" << wz.first << "\torder in a[k]:" << ta[k] << endl;
     }
 }
