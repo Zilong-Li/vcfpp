@@ -1,4 +1,5 @@
-// -*- compile-command: "g++ mspbwt.cpp -o mspbwt -std=c++17 -g -O3 -Wall -lhts -lz -lm -lbz2 -llzma -lcurl && ./mspbwt -i t.bcf -r chr22 > t" -*-
+// -*- compile-command: "g++ mspbwt.cpp -o mspbwt -std=c++17 -g -O3 -Wall -lhts -lz -lm -lbz2 -llzma -lcurl && ./mspbwt -p panel.vcf.gz -i query.vcf.gz -r chr22
+// > t" -*-
 #include "../vcfpp.h"
 
 #include <algorithm>
@@ -36,9 +37,9 @@ vector<bool> randhapz(uint64_t M);
 IntMap build_C(const IntGridVec& x, const IntSet& s);
 WgSymbolMap save_W(const IntGridVec& x, const IntSet& s);
 IntVecMap build_W(const IntGridVec& x, const IntSet& s, const IntMap& C);
-void mspbwt(const std::string& vcffile, const std::string& samples, const std::string& region, int ki);
+void mspbwt(const std::string& vcfpanel, const std::string& vcfquery, const std::string& samples, const std::string& region, int ki);
 
-void coutZYk(const vector<IntGridVec>& X, const vector<vector<int>>& A, const IntGridVec& zg, const vector<int>& az, int k, bool bit=1);
+void coutZYk(const vector<IntGridVec>& X, const vector<vector<int>>& A, const IntGridVec& zg, const vector<int>& az, int k, bool bit = 1);
 void coutWgSymbolMap(const WgSymbolMap& wg);
 
 int main(int argc, char* argv[])
@@ -49,24 +50,24 @@ int main(int argc, char* argv[])
     {
         std::cout << "Author: Zilong-Li (zilong.dk@gmail.com)\n"
                   << "Usage example:\n"
-                  << "     " + (std::string)argv[0] + " -i in.bcf \n"
-                  << "     " + (std::string)argv[0] + " -i in.bcf -o out.bcf -s ^S1,S2 -r chr1:1-1000 \n"
-                  << "     bcftools view in.bcf | " + (std::string)argv[0] + " -i - -o out.bcf \n"
+                  << "     " + (std::string)argv[0] + " -p panel.vcf.gz -i query.vcf.gz -r chr22 \n"
                   << "\nOptions:\n"
-                  << "     -i    input vcf/bcf file\n"
-                  << "     -o    ouput vcf/bcf file [stdout]\n"
+                  << "     -p    vcf/bcf file of reference panel\n"
+                  << "     -i    vcf/bcf file of query sequence\n"
                   << "     -s    list of samples to be included or excluded\n"
                   << "     -r    specific region to be included\n"
-                  << "     -k    Y[k] show [1]\n"
+                  << "     -k    Y[k] to show [1]\n"
                   << std::endl;
         return 1;
     }
-    std::string invcf, outvcf = "-", samples = "-", region = "";
+    std::string vcfpanel, vcfquery, outvcf = "-", samples = "-", region = "";
     int ki{1};
     for (int i = 0; i < args.size(); i++)
     {
+        if (args[i] == "-p")
+            vcfpanel = args[++i];
         if (args[i] == "-i")
-            invcf = args[++i];
+            vcfquery = args[++i];
         if (args[i] == "-o")
             outvcf = args[++i];
         if (args[i] == "-s")
@@ -79,7 +80,7 @@ int main(int argc, char* argv[])
 
     // ========= core calculation part ===========================================
 
-    mspbwt(invcf, samples, region, ki);
+    mspbwt(vcfpanel, vcfquery, samples, region, ki);
 
     return 0;
 }
@@ -121,7 +122,7 @@ void coutZYk(const vector<IntGridVec>& X, const vector<vector<int>>& A, const In
     {
         for (int j = 0; j <= k + 1; j++)
         {
-            auto rb = reverseBits(X[j][A[k+1][i]]);
+            auto rb = reverseBits(X[j][A[k + 1][i]]);
             if (bit)
                 cout << std::bitset<B>(rb) << " ";
             else
@@ -233,10 +234,10 @@ IntVecMap build_W(const IntGridVec& x, const IntSet& s, const IntMap& C)
     return W;
 }
 
-void mspbwt(const std::string& vcffile, const std::string& samples, const std::string& region, int ki)
+void mspbwt(const std::string& vcfpanel, const std::string& vcfquery, const std::string& samples, const std::string& region, int ki)
 {
     const int B = 32;
-    BcfReader vcf(vcffile, samples, region);
+    BcfReader vcf(vcfpanel, samples, region);
     BcfRecord var(vcf.header);
     uint64_t N{0}, M{0}, G{0}, k{0}, m{0}, i{0}; // N haplotypes, M SNPs, G Grids, k Current grid, m Current SNP
     N = vcf.nsamples * 2;
@@ -303,27 +304,65 @@ void mspbwt(const std::string& vcffile, const std::string& samples, const std::s
     }
 
     // finially insert zg back to A at each grid
-    auto z = randhapz(M);
-    auto zg = encodeZ2Grid(z, G);
+    // use vcfquery as input
+    BcfReader zvcf(vcfquery, "-", region);
+    BcfRecord zvar(zvcf.header);
+    int Nz = zvcf.nsamples * 2;
+    vector<IntGridVec> Z; // Grids x Haps
+    Z.resize(Nz, IntGridVec(G));
+    k = 0;
+    m = 0;
+    vector<bool> gtz;
+    while (zvcf.getNextVariant(zvar))
+    {
+        zvar.getGenotypes(gtz);
+        // update current grids
+        for (i = 0; i < Nz; i++)
+            Z[i][k] = (Z[i][k] << 1) | (gtz[i] != 0);
+        m++;
+        if (m % B == 0)
+        {
+            for (i = 0; i < Nz; i++)
+                Z[i][k] = reverseBits(Z[i][k]); // reverset bits
+            k++;                                // update next grid
+        }
+    }
+    if (G == k + 1)
+    {
+        for (i = 0; i < Nz; i++)
+        {
+            Z[i][k] <<= G * B - M;
+            Z[i][k] = reverseBits(Z[i][k]); // reverset bits
+        }
+    }
+    else if (G == k)
+    {
+        cerr << "no need padding\n";
+    }
+    else
+    {
+        throw std::runtime_error("something wrong\n");
+    }
+    // auto z = randhapz(M);
+    auto zg = Z[0];
     vector<int> az(G); // use int for index to be compatibable to R
     k = 0;
     // binary search for the closest symbol to zg[k] in W[k] keys if not exists
-    // auto wz = W[k].upper_bound(zg[k]) != W[k].end() ? *(prev(W[k].upper_bound(zg[k]),1)) : *W[k].crbegin();
-    auto wz = *prev(W[k].upper_bound(zg[k]),1);
+    auto wz = *prev(W[k].upper_bound(zg[k]), 1);
     // for k=0, start with random occurrence of the symbol. and put zg at that position
     az[k] = wz.second.crbegin()->first; // W[k] : {symbol: {index: rank}};
     // print out
     for (const auto& si : W[k])
         cerr << bitset<B>(reverseBits(si.first)) << ", " << si.first << "\n";
-    cerr << "\nk:" << k << "\nclosest symbol to zg[" << bitset<B>(reverseBits( zg[k])) << "]:\t" << bitset<B>(reverseBits( wz.first)) << "\norder in a[k+1]:" << az[k] << endl;
+    cerr << "\nk:" << k << "\nclosest symbol to zg[" << bitset<B>(reverseBits(zg[k])) << "]:\t" << bitset<B>(reverseBits(wz.first))
+         << "\norder in a[k+1]:" << az[k] << endl;
     cerr << "\nk:" << k << "\nclosest symbol to zg[" << (zg[k]) << "]:\t" << (wz.first) << "\norder in a[k]:" << az[k] << endl;
     // coutWgSymbolMap(W[k]);
     // for k > 0
     for (k = 1; k < G; k++)
     {
-        auto wz = *prev(W[k].upper_bound(zg[k]),1);
-        auto wi = *prev(wz.second.upper_bound(az[k-1]),1);
-        // auto wi = wz.second.upper_bound(az[k-1]) != wz.second.end() ? *(prev(wz.second.upper_bound(az[k-1]),1)) : *wz.second.crbegin();
+        auto wz = *prev(W[k].upper_bound(zg[k]), 1);
+        auto wi = *prev(wz.second.upper_bound(az[k - 1]), 1);
         cerr << wz.first << "\t" << wz.second.size() << "\t" << wi.second << "\t" << C[k][wz.first] << endl;
         az[k] = wi.second + C[k][wz.first];
     }
