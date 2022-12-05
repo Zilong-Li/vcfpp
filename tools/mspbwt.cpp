@@ -117,7 +117,7 @@ vector<uint32_t> encodeZ2Grid(const vector<bool>& z, int G)
 
 void coutZYk(const vector<IntGridVec>& X, const vector<vector<int>>& A, const IntGridVec& zg, const vector<int>& az, int k, bool bit)
 {
-    const size_t B = sizeof(X[0][0]) * 4;
+    const size_t B = sizeof(X[0][0]) * 8;
     for (size_t i = 0; i < X[0].size(); i++)
     {
         for (int j = 0; j <= k + 1; j++)
@@ -344,7 +344,7 @@ void mspbwt(const std::string& vcfpanel, const std::string& vcfquery, const std:
         throw std::runtime_error("something wrong\n");
     }
     // auto z = randhapz(M);
-    auto zg = Z[0];
+    auto zg = Z[1];
     vector<int> az(G); // use int for index to be compatibable to R
     k = 0;
     // binary search for the closest symbol to zg[k] in W[k] keys if not exists
