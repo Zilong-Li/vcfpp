@@ -18,7 +18,8 @@ T reverseBits(T n, size_t b = sizeof(T) * 8)
 {
     assert(b <= std::numeric_limits<T>::digits);
     T rv = 0;
-    for (size_t i = 0; i < b; ++i, n >>= 1) {
+    for (size_t i = 0; i < b; ++i, n >>= 1)
+    {
         rv = (rv << 1) | (n & 0x01);
     }
     return rv;
@@ -30,14 +31,14 @@ using IntMap = unordered_map<uint32_t, uint32_t>;
 using IntVecMap = unordered_map<uint32_t, std::vector<uint32_t>>;
 using WgSymbolMap = map<uint32_t, map<uint32_t, uint32_t, less<uint32_t>>, less<uint32_t>>;
 
-vector<uint32_t> encode_z2grid(const vector<bool>& z, int G);
+vector<uint32_t> encodeZ2Grid(const vector<bool>& z, int G);
 vector<bool> randhapz(uint64_t M);
 IntMap build_C(const IntGridVec& x, const IntSet& s);
 WgSymbolMap save_W(const IntGridVec& x, const IntSet& s);
 IntVecMap build_W(const IntGridVec& x, const IntSet& s, const IntMap& C);
 void mspbwt(const std::string& vcffile, const std::string& samples, const std::string& region, int ki);
 
-void coutZYk(const vector<IntGridVec>& X, const vector<vector<int>>& A, const IntGridVec& zg, const vector<int>& ta, int k, bool bit = 1);
+void coutZYk(const vector<IntGridVec>& X, const vector<vector<int>>& A, const IntGridVec& zg, const vector<int>& az, int k, bool bit=1);
 void coutWgSymbolMap(const WgSymbolMap& wg);
 
 int main(int argc, char* argv[])
@@ -83,7 +84,7 @@ int main(int argc, char* argv[])
     return 0;
 }
 
-vector<uint32_t> encode_z2grid(const vector<bool>& z, int G)
+vector<uint32_t> encodeZ2Grid(const vector<bool>& z, int G)
 {
     vector<uint32_t> zg(G);
     const int B = 32;
@@ -113,14 +114,14 @@ vector<uint32_t> encode_z2grid(const vector<bool>& z, int G)
     return zg;
 }
 
-void coutZYk(const vector<IntGridVec>& X, const vector<vector<int>>& A, const IntGridVec& zg, const vector<int>& ta, int k, bool bit)
+void coutZYk(const vector<IntGridVec>& X, const vector<vector<int>>& A, const IntGridVec& zg, const vector<int>& az, int k, bool bit)
 {
     const size_t B = sizeof(X[0][0]) * 4;
     for (size_t i = 0; i < X[0].size(); i++)
     {
-        for (int j = 0; j < k + 1; j++)
+        for (int j = 0; j <= k + 1; j++)
         {
-            auto rb = reverseBits(X[j][A[k][i]]);
+            auto rb = reverseBits(X[j][A[k+1][i]]);
             if (bit)
                 cout << std::bitset<B>(rb) << " ";
             else
@@ -128,11 +129,11 @@ void coutZYk(const vector<IntGridVec>& X, const vector<vector<int>>& A, const In
         }
         cout << endl;
 
-        if (i == ta[k])
+        if (i == az[k])
         {
             // print out original Z bits
-            cout << "========= zg is inserting here ========  k=" << k << ", ta[k]=" << ta[k] << endl;
-            for (int j = 0; j < k + 1; j++)
+            cout << "========= zg is inserting here ========  k-1=" << k << ", az[k-1]=" << az[k] << endl;
+            for (int j = 0; j <= k + 1; j++)
             {
                 auto rb = reverseBits(zg[j]);
                 if (bit)
@@ -141,7 +142,7 @@ void coutZYk(const vector<IntGridVec>& X, const vector<vector<int>>& A, const In
                     cout << rb << " ";
             }
             cout << endl;
-            cout << "========= zg is inserting here ========  k=" << k << ", ta[k]=" << ta[k] << endl;
+            cout << "========= zg is inserting here ========  k-1=" << k << ", az[k]=" << az[k + 1] << endl;
         }
     }
 }
@@ -164,11 +165,11 @@ vector<bool> randhapz(uint64_t M)
 {
     std::random_device rd;  // Will be used to obtain a seed for the random number engine
     std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
-    std::uniform_int_distribution<> dist(0, 1);
+    std::uniform_int_distribution<> dist(1, 6);
     vector<bool> z(M);
     for (uint64_t i = 0; i < M; i++)
     {
-        z[i] = dist(gen);
+        z[i] = dist(gen) > 3;
     }
     return z;
 }
@@ -256,7 +257,7 @@ void mspbwt(const std::string& vcffile, const std::string& samples, const std::s
         if (m % B == 0)
         {
             X[k][i] = reverseBits(X[k][i]); // reverset bits
-            k++; // update next grid
+            k++;                            // update next grid
         }
     }
     if (G == k + 1)
@@ -303,28 +304,30 @@ void mspbwt(const std::string& vcffile, const std::string& samples, const std::s
 
     // finially insert zg back to A at each grid
     auto z = randhapz(M);
-    auto zg = encode_z2grid(z, G);
-    vector<int> ta(G+1); // use int for index to be compatibable to R
+    auto zg = encodeZ2Grid(z, G);
+    vector<int> az(G); // use int for index to be compatibable to R
     k = 0;
-    ta[k] = N;
     // binary search for the closest symbol to zg[k] in W[k] keys if not exists
-    auto wz = W[k].lower_bound(zg[k]) != W[k].end() ? *W[k].lower_bound(zg[k]) : *W[k].crbegin();
+    // auto wz = W[k].upper_bound(zg[k]) != W[k].end() ? *(prev(W[k].upper_bound(zg[k]),1)) : *W[k].crbegin();
+    auto wz = *prev(W[k].upper_bound(zg[k]),1);
     // for k=0, start with random occurrence of the symbol. and put zg at that position
-    ta[k+1] = wz.second.crbegin()->first; // W[k] : {symbol: {index: rank}};
+    az[k] = wz.second.crbegin()->first; // W[k] : {symbol: {index: rank}};
     // print out
-    // for (const auto& si : W[k])
-    //     cerr << bitset<B>(si.first) << ", " << si.first << "\n";
-    cerr << "\nk:" << k << "\nclosest symbol to zg[" << bitset<B>(zg[k]) << "]:\t" << bitset<B>(wz.first) << "\norder in a[k+1]:" << ta[k+1] << endl;
-    cerr << "\nk:" << k << "\nclosest symbol to zg[" << (zg[k]) << "]:\t" << (wz.first) << "\norder in a[k]:" << ta[k+1] << endl;
+    for (const auto& si : W[k])
+        cerr << bitset<B>(reverseBits(si.first)) << ", " << si.first << "\n";
+    cerr << "\nk:" << k << "\nclosest symbol to zg[" << bitset<B>(reverseBits( zg[k])) << "]:\t" << bitset<B>(reverseBits( wz.first)) << "\norder in a[k+1]:" << az[k] << endl;
+    cerr << "\nk:" << k << "\nclosest symbol to zg[" << (zg[k]) << "]:\t" << (wz.first) << "\norder in a[k]:" << az[k] << endl;
     // coutWgSymbolMap(W[k]);
     // for k > 0
     for (k = 1; k < G; k++)
     {
-        auto wz = W[k].lower_bound(zg[k]) != W[k].end() ? *W[k].lower_bound(zg[k]) : *W[k].crbegin();
-        auto wi = wz.second.lower_bound(ta[k]) != wz.second.end() ? *wz.second.lower_bound(ta[k - 1]) : *wz.second.crbegin();
-        ta[k+1] = wi.second + C[k][wz.first];
+        auto wz = *prev(W[k].upper_bound(zg[k]),1);
+        auto wi = *prev(wz.second.upper_bound(az[k-1]),1);
+        // auto wi = wz.second.upper_bound(az[k-1]) != wz.second.end() ? *(prev(wz.second.upper_bound(az[k-1]),1)) : *wz.second.crbegin();
+        cerr << wz.first << "\t" << wz.second.size() << "\t" << wi.second << "\t" << C[k][wz.first] << endl;
+        az[k] = wi.second + C[k][wz.first];
     }
-    for (const auto& ai : ta)
-        cerr << ai << "\n";
-    coutZYk(X, A, zg, ta, ki);
+    // for (const auto& ai : ta)
+    //     cerr << ai << "\n";
+    coutZYk(X, A, zg, az, ki);
 }
