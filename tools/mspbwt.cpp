@@ -15,14 +15,12 @@ using namespace std;
 using namespace vcfpp;
 
 template <typename T>
-T reverseBits(T n, size_t b = sizeof(T) * 8)
+T reverseBits(T n, size_t B = sizeof(T) * 8)
 {
-    assert(b <= std::numeric_limits<T>::digits);
+    assert(B <= std::numeric_limits<T>::digits);
     T rv = 0;
-    for (size_t i = 0; i < b; ++i, n >>= 1)
-    {
+    for (size_t i = 0; i < B; ++i, n >>= 1)
         rv = (rv << 1) | (n & 0x01);
-    }
     return rv;
 }
 
@@ -30,9 +28,10 @@ using IntGridVec = vector<uint32_t>;
 using IntSet = set<uint32_t, less<uint32_t>>;
 using IntMap = unordered_map<uint32_t, uint32_t>;
 using IntVecMap = unordered_map<uint32_t, std::vector<uint32_t>>;
-using WgSymbolMap = map<uint32_t, map<uint32_t, uint32_t, less<uint32_t>>, less<uint32_t>>;
+using SymbolIdxMap = map<uint32_t, uint32_t, less<uint32_t>>;
+using WgSymbolMap = map<uint32_t, SymbolIdxMap, less<uint32_t>>;
 
-vector<uint32_t> encodeZ2Grid(const vector<bool>& z, int G);
+vector<uint32_t> encodeZgrid(const vector<bool>& z, int G);
 vector<bool> randhapz(uint64_t M);
 IntMap build_C(const IntGridVec& x, const IntSet& s);
 WgSymbolMap save_W(const IntGridVec& x, const IntSet& s);
@@ -85,7 +84,7 @@ int main(int argc, char* argv[])
     return 0;
 }
 
-vector<uint32_t> encodeZ2Grid(const vector<bool>& z, int G)
+vector<uint32_t> encodeZgrid(const vector<bool>& z, int G)
 {
     vector<uint32_t> zg(G);
     const int B = 32;

@@ -30,6 +30,8 @@
  *
  */
 
+#pragma once
+
 #ifndef VCFPP_H_
 #define VCFPP_H_
 
@@ -91,7 +93,7 @@ namespace vcfpp
     }
 
     // test if a string is end with another string
-    bool isEndWith(std::string const& s, std::string const& e)
+    inline bool isEndWith(std::string const& s, std::string const& e)
     {
         if (s.length() >= e.length())
         {
