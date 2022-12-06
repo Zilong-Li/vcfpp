@@ -39,7 +39,6 @@ IntVecMap build_W(const IntGridVec& x, const IntSet& s, const IntMap& C);
 void mspbwt(const std::string& vcfpanel, const std::string& vcfquery, const std::string& samples, const std::string& region, int ki);
 
 void coutZYk(const vector<IntGridVec>& X, const vector<vector<int>>& A, const IntGridVec& zg, const vector<int>& az, int k, bool bit = 1);
-void coutWgSymbolMap(const WgSymbolMap& wg);
 
 int main(int argc, char* argv[])
 {
@@ -147,19 +146,6 @@ void coutZYk(const vector<IntGridVec>& X, const vector<vector<int>>& A, const In
     }
 }
 
-
-void coutWgSymbolMap(const WgSymbolMap& wg)
-{
-    auto print_key_value = [](const auto& key, const auto& value) { std::cout << "Index:[" << key << "] rank:[" << value << "]\n"; };
-    for (const auto& [s, v] : wg)
-    {
-        cout << "symbol:[" << s << "]\n";
-        for (const auto& [idx, i] : v)
-        {
-            print_key_value(idx, i);
-        }
-    }
-}
 
 vector<bool> randhapz(uint64_t M)
 {
@@ -356,14 +342,20 @@ void mspbwt(const std::string& vcfpanel, const std::string& vcfquery, const std:
     cerr << "\nk:" << k << "\nclosest symbol to zg[" << bitset<B>(reverseBits(zg[k])) << "]:\t" << bitset<B>(reverseBits(wz.first))
          << "\norder in a[k+1]:" << az[k] << endl;
     cerr << "\nk:" << k << "\nclosest symbol to zg[" << (zg[k]) << "]:\t" << (wz.first) << "\norder in a[k]:" << az[k] << endl;
-    // coutWgSymbolMap(W[k]);
     // for k > 0
     for (k = 1; k < G; k++)
     {
         auto wz = *prev(W[k].upper_bound(zg[k]), 1);
-        auto wi = *prev(wz.second.upper_bound(az[k - 1]), 1);
-        cerr << wz.first << "\t" << wz.second.size() << "\t" << wi.second << "\t" << C[k][wz.first] << endl;
-        az[k] = wi.second + C[k][wz.first];
+        if (az[k - 1] < C[k][wz.first])
+        {
+            cerr << az[k - 1] << " less than " << C[k][wz.first] << endl;
+            az[k] = C[k][wz.first];
+        }
+        else
+        {
+            auto wi = *prev(wz.second.upper_bound(az[k - 1]), 1);
+            az[k] = wi.second + C[k][wz.first];
+        }
     }
     // for (const auto& ai : ta)
     //     cerr << ai << "\n";
