@@ -333,7 +333,7 @@ void mspbwt(const std::string& vcfpanel, const std::string& vcfquery, const std:
     vector<int> az(G); // use int for index to be compatibable to R
     k = 0;
     // binary search for the closest symbol to zg[k] in W[k] keys if not exists
-    auto wz = *prev(W[k].upper_bound(zg[k]), 1);
+    auto wz = W[k].upper_bound(zg[k]) == W[k].begin() ? *W[k].begin() : *prev(W[k].upper_bound(zg[k]));
     // for k=0, start with random occurrence of the symbol. and put zg at that position
     az[k] = wz.second.crbegin()->first; // W[k] : {symbol: {index: rank}};
     // print out
@@ -345,7 +345,7 @@ void mspbwt(const std::string& vcfpanel, const std::string& vcfquery, const std:
     // for k > 0
     for (k = 1; k < G; k++)
     {
-        auto wz = *prev(W[k].upper_bound(zg[k]), 1);
+        auto wz = W[k].upper_bound(zg[k]) == W[k].begin() ? *W[k].begin() : *prev(W[k].upper_bound(zg[k]));
         if (az[k - 1] < C[k][wz.first])
         {
             cerr << az[k - 1] << " less than " << C[k][wz.first] << endl;
@@ -353,11 +353,11 @@ void mspbwt(const std::string& vcfpanel, const std::string& vcfquery, const std:
         }
         else
         {
-            auto wi = *prev(wz.second.upper_bound(az[k - 1]), 1);
+            auto wi = wz.second.upper_bound(az[k - 1]) == wz.second.begin() ? *wz.second.begin() : *prev(wz.second.upper_bound(az[k - 1]));
             az[k] = wi.second + C[k][wz.first];
         }
     }
-    // for (const auto& ai : ta)
-    //     cerr << ai << "\n";
+    for (const auto& ai : az)
+        cerr << ai << "\n";
     coutZYk(X, A, zg, az, ki);
 }
