@@ -311,24 +311,24 @@ void mspbwt(const std::string& vcfpanel, const std::string& samples, const std::
     for (const auto& zg : Z)
     {
         tm.clock();
-        k = 0; j=0;
+        k = 0, j = 0;
         // binary search for the closest symbol to zg[k] in W[k] keys if not exists
-        auto wz = W[k].upper_bound(zg[k]) == W[k].begin() ? *W[k].begin() : *prev(W[k].upper_bound(zg[k]));
+        auto wz = W[k].upper_bound(zg[k]) == W[k].begin() ? W[k].begin() : prev(W[k].upper_bound(zg[k]));
         // for k=0, start with random occurrence of the symbol. and put zg at that position
-        az[k] = wz.second.crbegin()->first; // W[k] : {symbol: {index: rank}};
+        az[k] = wz->second.crbegin()->first; // W[k] : {symbol: {index: rank}};
         // for k > 0
         for (k = 1; k < G; k++)
         {
-            auto wz = W[k].upper_bound(zg[k]) == W[k].begin() ? *W[k].begin() : *prev(W[k].upper_bound(zg[k]));
-            if (az[k - 1] < C[k][wz.first])
+            auto wz = W[k].upper_bound(zg[k]) == W[k].begin() ? W[k].begin() : prev(W[k].upper_bound(zg[k]));
+            if (az[k - 1] < C[k][wz->first])
             {
                 j++;
-                az[k] = C[k][wz.first];
+                az[k] = C[k][wz->first];
             }
             else
             {
-                auto wi = wz.second.upper_bound(az[k - 1]) == wz.second.begin() ? *wz.second.begin() : *prev(wz.second.upper_bound(az[k - 1]));
-                az[k] = wi.second + C[k][wz.first];
+                auto wi = wz->second.upper_bound(az[k - 1]) == wz->second.begin() ? *wz->second.begin() : *prev(wz->second.upper_bound(az[k - 1]));
+                az[k] = wi.second + C[k][wz->first];
             }
         }
         cerr << "elapsed time of query hap z: " << tm.reltime() << " milliseconds. " << j << "/" << G << " grids skipped searching\n";

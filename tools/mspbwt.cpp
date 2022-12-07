@@ -1,5 +1,4 @@
-// -*- compile-command: "g++ mspbwt.cpp -o mspbwt -std=c++17 -g -O3 -Wall -lhts -lz -lm -lbz2 -llzma -lcurl && ./mspbwt -p panel.vcf.gz -i query.vcf.gz -r chr22
-// > t" -*-
+// -*- compile-command: "g++ mspbwt.cpp -std=c++17 -g -O3 -Wall -lhts -lz -lm -lbz2 -llzma -lcurl && ./a.out -p panel.vcf.gz -i query.vcf.gz -r chr22 > t" -*-
 #include "../vcfpp.h"
 
 #include <algorithm>
@@ -335,28 +334,35 @@ void mspbwt(const std::string& vcfpanel, const std::string& vcfquery, const std:
     vector<int> az(G); // use int for index to be compatibable to R
     k = 0;
     // binary search for the closest symbol to zg[k] in W[k] keys if not exists
-    auto wz = W[k].upper_bound(zg[k]) == W[k].begin() ? *W[k].begin() : *prev(W[k].upper_bound(zg[k]));
+    auto wz = W[k].upper_bound(zg[k]) == W[k].begin() ? W[k].begin() : prev(W[k].upper_bound(zg[k]));
     // for k=0, start with random occurrence of the symbol. and put zg at that position
-    az[k] = wz.second.crbegin()->first; // W[k] : {symbol: {index: rank}};
+    az[k] = wz->second.crbegin()->first; // W[k] : {symbol: {index: rank}};
     // print out
     for (const auto& si : W[k])
         cerr << bitset<B>(reverseBits(si.first)) << ", " << si.first << "\n";
-    cerr << "\nk:" << k << "\nclosest symbol to zg[" << bitset<B>(reverseBits(zg[k])) << "]:\t" << bitset<B>(reverseBits(wz.first))
+    cerr << "\nk:" << k << "\nclosest symbol to zg[" << bitset<B>(reverseBits(zg[k])) << "]:\t" << bitset<B>(reverseBits(wz->first))
          << "\norder in a[k+1]:" << az[k] << endl;
-    cerr << "\nk:" << k << "\nclosest symbol to zg[" << (zg[k]) << "]:\t" << (wz.first) << "\norder in a[k]:" << az[k] << endl;
+    cerr << "\nk:" << k << "\nclosest symbol to zg[" << (zg[k]) << "]:\t" << (wz->first) << "\norder in a[k]:" << az[k] << endl;
     // for k > 0
     for (k = 1; k < G; k++)
     {
         auto wz = W[k].upper_bound(zg[k]) == W[k].begin() ? *W[k].begin() : *prev(W[k].upper_bound(zg[k]));
         if (az[k - 1] < C[k][wz.first])
         {
-            cerr << az[k - 1] << " less than " << C[k][wz.first] << endl;
             az[k] = C[k][wz.first];
         }
         else
         {
-            auto wi = wz.second.upper_bound(az[k - 1]) == wz.second.begin() ? *wz.second.begin() : *prev(wz.second.upper_bound(az[k - 1]));
-            az[k] = wi.second + C[k][wz.first];
+            auto wz = W[k].upper_bound(zg[k]) == W[k].begin() ? W[k].begin() : prev(W[k].upper_bound(zg[k]));
+            if (az[k - 1] < C[k][wz->first])
+            {
+                az[k] = C[k][wz->first];
+            }
+            else
+            {
+                auto wi = wz->second.upper_bound(az[k - 1]) == wz->second.begin() ? *wz->second.begin() : *prev(wz->second.upper_bound(az[k - 1]));
+                az[k] = wi.second + C[k][wz->first];
+            }
         }
     }
     for (const auto& ai : az)
