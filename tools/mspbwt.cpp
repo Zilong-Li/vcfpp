@@ -242,16 +242,18 @@ void mspbwt(const std::string& vcfpanel, const std::string& vcfquery, const std:
         m++;
         if (m % B == 0)
         {
-            X[k][i] = reverseBits(X[k][i]); // reverset bits
-            k++;                            // update next grid
+            for (i = 0; i < N; i++)
+                X[k][i] = reverseBits(X[k][i]); // reverset bits
+            k++;                                // update next grid
         }
     }
     if (G == k + 1)
     {
-        int pad = G * B - M;
         for (i = 0; i < N; i++)
-            X[k][i] <<= pad;
-        X[k][i] = reverseBits(X[k][i]); // reverset bits
+        {
+            X[k][i] <<= G * B - M;
+            X[k][i] = reverseBits(X[k][i]); // reverset bits
+        }
     }
     else if (G == k)
     {
