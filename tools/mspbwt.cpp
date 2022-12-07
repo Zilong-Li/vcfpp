@@ -269,6 +269,7 @@ void mspbwt(const std::string& vcfpanel, const std::string& vcfquery, const std:
     vector<vector<int>> A; // (Grids+1) x Haps, we use int here so that R can take it
     A.resize(G + 1, vector<int>(N));
     vector<int> a0(N);
+    IntSet s;
     for (k = 0; k < G; k++)
     {
         if (k == 0)
@@ -277,8 +278,10 @@ void mspbwt(const std::string& vcfpanel, const std::string& vcfquery, const std:
             A[k] = a0;
         }
         for (i = 0; i < N; i++)
+        {
             y0[i] = X[k][a0[i]];
-        IntSet s(y0.begin(), y0.end()); // convert to set which unique sorted
+            s.insert(y0[i]);
+        }
         C[k] = build_C(y0, s);
         auto Wg = build_W(y0, s, C[k]); // here Wg is S x N
         for (i = 0; i < N; i++)
@@ -287,6 +290,7 @@ void mspbwt(const std::string& vcfpanel, const std::string& vcfquery, const std:
         a0 = A[k + 1];
         // here save current W, which differs from the previous complete table
         W[k] = save_W(y0, s);
+        s.clear();
     }
 
     // finially insert zg back to A at each grid

@@ -286,6 +286,7 @@ void mspbwt(const std::string& vcfpanel, const std::string& samples, const std::
     vector<vector<int>> A; // (Grids+1) x Haps, we use int here so that R can take it
     A.resize(G + 1, vector<int>(Np));
     vector<int> a0(Np);
+    IntSet s;
     for (k = 0; k < G; k++)
     {
         if (k == 0)
@@ -294,7 +295,10 @@ void mspbwt(const std::string& vcfpanel, const std::string& samples, const std::
             A[k] = a0;
         }
         for (i = 0; i < Np; i++)
+        {
             y0[i] = X[k][a0[i]];
+            s.insert(y0[i]);
+        }
         IntSet s(y0.begin(), y0.end()); // convert to set which unique sorted
         C[k] = build_C(y0, s);
         auto Wg = build_W(y0, s, C[k]); // here Wg is S x N
@@ -304,6 +308,7 @@ void mspbwt(const std::string& vcfpanel, const std::string& samples, const std::
         a0 = A[k + 1];
         // here save current W, which differs from the previous complete table
         W[k] = save_W(y0, s);
+        s.clear();
     }
     cerr << "elapsed time of buiding indices: " << tm.abstime() << endl;
 
