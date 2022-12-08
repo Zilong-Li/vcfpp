@@ -200,6 +200,17 @@ IntVecMap build_W(const IntGridVec& x, const IntSet& s, const IntMap& C)
     return W;
 }
 
+IntMap build_Symbols(const IntSet& s)
+{
+    uint32_t n{0};
+    IntMap symbol;
+    for (const auto& si : s)
+    {
+        symbol[si] = n++;
+    }
+    return symbol;
+}
+
 void mspbwt(const std::string& vcfpanel, const std::string& samples, const std::string& region, int q)
 {
     Timer tm;
@@ -286,7 +297,7 @@ void mspbwt(const std::string& vcfpanel, const std::string& samples, const std::
     vector<vector<int>> A; // (Grids+1) x Haps, we use int here so that R can take it
     A.resize(G + 1, vector<int>(Np));
     vector<int> a0(Np);
-    IntSet s;
+    IntSet symbols;
     for (k = 0; k < G; k++)
     {
         if (k == 0)
@@ -297,18 +308,17 @@ void mspbwt(const std::string& vcfpanel, const std::string& samples, const std::
         for (i = 0; i < Np; i++)
         {
             y0[i] = X[k][a0[i]];
-            s.insert(y0[i]);
+            symbols.insert(y0[i]);
         }
-        IntSet s(y0.begin(), y0.end()); // convert to set which unique sorted
-        C[k] = build_C(y0, s);
-        auto Wg = build_W(y0, s, C[k]); // here Wg is S x N
+        C[k] = build_C(y0, symbols);
+        auto Wg = build_W(y0, symbols, C[k]); // here Wg is S x N
         for (i = 0; i < Np; i++)
             A[k + 1][Wg[y0[i]][i] - 1] = a0[i];
         // next run
         a0 = A[k + 1];
         // here save current W, which differs from the previous complete table
-        W[k] = save_W(y0, s);
-        s.clear();
+        W[k] = save_W(y0, symbols);
+        symbols.clear();
     }
     cerr << "elapsed time of buiding indices: " << tm.abstime() << endl;
 
@@ -320,7 +330,7 @@ void mspbwt(const std::string& vcfpanel, const std::string& samples, const std::
         // binary search for the closest symbol to zg[k] in W[k] keys if not exists
         auto wz = W[k].upper_bound(zg[k]) == W[k].begin() ? W[k].begin() : prev(W[k].upper_bound(zg[k]));
         // for k=0, start with random occurrence of the symbol. and put zg at that position
-        az[k] = wz->second.crbegin()->first; // W[k] : {symbol: {index: rank}};
+        az[k] = wz->second.rbegin()->first; // W[k] : {symbol: {index: rank}};
         // for k > 0
         for (k = 1; k < G; k++)
         {

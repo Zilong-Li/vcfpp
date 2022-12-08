@@ -1,4 +1,4 @@
-// -*- compile-command: "g++ mspbwt.cpp -std=c++17 -g -O3 -Wall -lhts -lz -lm -lbz2 -llzma -lcurl && ./a.out -p panel.vcf.gz -i query.vcf.gz -r chr22 > t" -*-
+// -*- compile-command: "g++ mspbwt.cpp -std=c++17 -g -O3 -Wall -lhts -lz -lm -lbz2 -llzma -lcurl && ./a.out -p panel.vcf.gz -k 1 -r chr22 > t" -*-
 #include "../vcfpp.h"
 
 #include <algorithm>
@@ -35,7 +35,7 @@ vector<bool> randhapz(uint64_t M);
 IntMap build_C(const IntGridVec& x, const IntSet& s);
 WgSymbolMap save_W(const IntGridVec& x, const IntSet& s);
 IntVecMap build_W(const IntGridVec& x, const IntSet& s, const IntMap& C);
-void mspbwt(const std::string& vcfpanel, const std::string& vcfquery, const std::string& samples, const std::string& region, int ki);
+void mspbwt(const std::string& vcfpanel, const std::string& samples, const std::string& region, int q, int ki);
 
 void coutZYk(const vector<IntGridVec>& X, const vector<vector<int>>& A, const IntGridVec& zg, const vector<int>& az, int k, bool bit = 1);
 
@@ -47,37 +47,34 @@ int main(int argc, char* argv[])
     {
         std::cout << "Author: Zilong-Li (zilong.dk@gmail.com)\n"
                   << "Usage example:\n"
-                  << "     " + (std::string)argv[0] + " -p panel.vcf.gz -i query.vcf.gz -r chr22 \n"
+                  << "     " + (std::string)argv[0] + " -p panel.vcf.gz -q 10 -r chr22 \n"
                   << "\nOptions:\n"
                   << "     -p    vcf/bcf file of reference panel\n"
-                  << "     -i    vcf/bcf file of query sequence\n"
-                  << "     -s    list of samples to be included or excluded\n"
-                  << "     -r    specific region to be included\n"
-                  << "     -k    Y[k] to show [1]\n"
+                  << "     -r    chromosome to be included\n"
+                  << "     -q    first n numer of samples as query [1]\n"
+                  << "     -k    Y[k] to show. [1]\n"
                   << std::endl;
         return 1;
     }
     std::string vcfpanel, vcfquery, outvcf = "-", samples = "-", region = "";
-    int ki{1};
+    int q{1}, k{1};
     for (int i = 0; i < args.size(); i++)
     {
         if (args[i] == "-p")
             vcfpanel = args[++i];
-        if (args[i] == "-i")
-            vcfquery = args[++i];
         if (args[i] == "-o")
             outvcf = args[++i];
-        if (args[i] == "-s")
-            samples = args[++i];
         if (args[i] == "-r")
             region = args[++i];
+        if (args[i] == "-q")
+            q = stoi(args[++i]);
         if (args[i] == "-k")
-            ki = stoi(args[++i]);
+            k = stoi(args[++i]);
     }
 
     // ========= core calculation part ===========================================
 
-    mspbwt(vcfpanel, vcfquery, samples, region, ki);
+    mspbwt(vcfpanel, samples, region, q, k);
 
     return 0;
 }
@@ -199,7 +196,7 @@ WgSymbolMap save_W(const IntGridVec& x, const IntSet& s)
 
 IntVecMap build_W(const IntGridVec& x, const IntSet& s, const IntMap& C)
 {
-    uint32_t c{0}, i{0}, n{0}, cap{0};
+    uint32_t c{0}, i{0};
     IntVecMap W;
     for (const auto& si : s)
     {
@@ -211,47 +208,80 @@ IntVecMap build_W(const IntGridVec& x, const IntSet& s, const IntMap& C)
                 c++;
             W[si][i] = c + C.at(si);
         }
-        if (++n == cap && cap > 0)
-            break;
     }
 
     return W;
 }
 
-void mspbwt(const std::string& vcfpanel, const std::string& vcfquery, const std::string& samples, const std::string& region, int ki)
+void mspbwt(const std::string& vcfpanel, const std::string& samples, const std::string& region, int q, int ki)
 {
     const int B = 32;
     BcfReader vcf(vcfpanel, samples, region);
     BcfRecord var(vcf.header);
-    uint64_t N{0}, M{0}, G{0}, k{0}, m{0}, i{0}; // N haplotypes, M SNPs, G Grids, k Current grid, m Current SNP
-    N = vcf.nsamples * 2;
+    // N haplotypes, M SNPs, G Grids, k Current grid, m Current SNP
+    uint64_t Nq{0}, Np{0}, M{0}, G{0}, k{0}, m{0}, i{0}, j{0}, w{0};
+    Nq = q * 2;
+    Np = vcf.nsamples * 2 - Nq;
     M = vcf.get_region_records(region);
     G = (M + B - 1) / B;
-    cerr << "Haps(N):" << N << "\tSNPs(M):" << M << "\tGrids(G):" << G << "\tInt(B):" << B << endl;
-    vector<IntGridVec> X; // Grids x Haps
-    X.resize(G, IntGridVec(N));
+    cerr << "Haps(Np):" << Np << "\tHaps(Nq):" << Nq << "\tSNPs(M):" << M << "\tGrids(G):" << G << "\tInt(B):" << B << endl;
+    vector<IntGridVec> X, Z; // Grids x Haps
+    X.resize(G, IntGridVec(Np));
+    Z.resize(Nq, IntGridVec(G));
     vcf.setRegion(region); // seek back to region
     vector<bool> gt;
     while (vcf.getNextVariant(var))
     {
         var.getGenotypes(gt);
         // update current grids
-        for (i = 0; i < N; i++)
-            X[k][i] = (X[k][i] << 1) | (gt[i] != 0);
+        for (i = 0; i < gt.size(); i++)
+        {
+            if (i < Nq)
+            {
+                j = i;
+                Z[j][k] = (Z[j][k] << 1) | (gt[i] != 0);
+            }
+            else
+            {
+                j = i - Nq;
+                X[k][j] = (X[k][j] << 1) | (gt[i] != 0);
+            }
+        }
         m++;
         if (m % B == 0)
         {
-            for (i = 0; i < N; i++)
-                X[k][i] = reverseBits(X[k][i]); // reverset bits
-            k++;                                // update next grid
+            for (i = 0; i < gt.size(); i++)
+            {
+                if (i < Nq)
+                {
+                    j = i;
+                    Z[j][k] = reverseBits(Z[j][k]); // reverset bits
+                }
+                else
+                {
+                    j = i - Nq;
+                    X[k][j] = reverseBits(X[k][j]); // reverset bits
+                }
+            }
+            k++; // update next grid
         }
     }
     if (G == k + 1)
     {
-        for (i = 0; i < N; i++)
+        for (i = 0; i < gt.size(); i++)
         {
-            X[k][i] <<= G * B - M;
-            X[k][i] = reverseBits(X[k][i]); // reverset bits
+            if (i < Nq)
+            {
+                j = i;
+                Z[j][k] <<= G * B - M;
+                Z[j][k] = reverseBits(Z[j][k]); // reverset bits
+            }
+            else
+            {
+                j = i - Nq;
+                X[k][j] <<= G * B - M;
+                X[k][j] = reverseBits(X[k][j]); // reverset bits
+            }
         }
     }
     else if (G == k)
@@ -263,13 +293,14 @@ void mspbwt(const std::string& vcfpanel, const std::string& vcfquery, const std:
         throw std::runtime_error("something wrong\n");
     }
 
+
     vector<WgSymbolMap> W(G);
     vector<IntMap> C(G);
-    IntGridVec y0(N);
+    IntGridVec y0(Np);
     vector<vector<int>> A; // (Grids+1) x Haps, we use int here so that R can take it
-    A.resize(G + 1, vector<int>(N));
-    vector<int> a0(N);
-    IntSet s;
+    A.resize(G + 1, vector<int>(Np));
+    vector<int> a0(Np);
+    IntSet symbols;
     for (k = 0; k < G; k++)
     {
         if (k == 0)
@@ -277,70 +308,44 @@ void mspbwt(const std::string& vcfpanel, const std::string& vcfquery, const std:
             std::iota(a0.begin(), a0.end(), 0);
             A[k] = a0;
         }
-        for (i = 0; i < N; i++)
+        for (i = 0; i < Np; i++)
         {
             y0[i] = X[k][a0[i]];
-            s.insert(y0[i]);
+            symbols.insert(y0[i]);
         }
-        C[k] = build_C(y0, s);
-        auto Wg = build_W(y0, s, C[k]); // here Wg is S x N
-        for (i = 0; i < N; i++)
-            A[k + 1][Wg[y0[i]][i] - 1] = a0[i];
+        C[k] = build_C(y0, symbols);
+        // here save current W, which differs from build whole W table
+        W[k] = save_W(y0, symbols);
+        // without Wg=build_W (S x N) is slow but memory efficient
+        for (i = 0; i < Np; i++)
+        {
+            w = C[k][y0[i]];
+            if (i >= W[k][y0[i]].begin()->first)
+            {
+                for (const auto& [sidx, rank] : W[k][y0[i]])
+                {
+                    if (sidx == i)
+                    {
+                        w += rank + 1;
+                        break;
+                    }
+                }
+            }
+            A[k + 1][w - 1] = a0[i];
+        }
         // next run
         a0 = A[k + 1];
-        // here save current W, which differs from the previous complete table
-        W[k] = save_W(y0, s);
-        s.clear();
+        symbols.clear();
     }
 
     // finially insert zg back to A at each grid
-    // use vcfquery as input
-    BcfReader zvcf(vcfquery, "-", region);
-    BcfRecord zvar(zvcf.header);
-    int Nz = zvcf.nsamples * 2;
-    vector<IntGridVec> Z; // Grids x Haps
-    Z.resize(Nz, IntGridVec(G));
-    k = 0;
-    m = 0;
-    vector<bool> gtz;
-    while (zvcf.getNextVariant(zvar))
-    {
-        zvar.getGenotypes(gtz);
-        // update current grids
-        for (i = 0; i < Nz; i++)
-            Z[i][k] = (Z[i][k] << 1) | (gtz[i] != 0);
-        m++;
-        if (m % B == 0)
-        {
-            for (i = 0; i < Nz; i++)
-                Z[i][k] = reverseBits(Z[i][k]); // reverset bits
-            k++;                                // update next grid
-        }
-    }
-    if (G == k + 1)
-    {
-        for (i = 0; i < Nz; i++)
-        {
-            Z[i][k] <<= G * B - M;
-            Z[i][k] = reverseBits(Z[i][k]); // reverset bits
-        }
-    }
-    else if (G == k)
-    {
-        cerr << "no need padding\n";
-    }
-    else
-    {
-        throw std::runtime_error("something wrong\n");
-    }
-    // auto z = randhapz(M);
     auto zg = Z[1];
     vector<int> az(G); // use int for index to be compatibable to R
-    k = 0;
+    k = 0, j = 0;
     // binary search for the closest symbol to zg[k] in W[k] keys if not exists
     auto wz = W[k].upper_bound(zg[k]) == W[k].begin() ? W[k].begin() : prev(W[k].upper_bound(zg[k]));
     // for k=0, start with random occurrence of the symbol. and put zg at that position
-    az[k] = wz->second.crbegin()->first; // W[k] : {symbol: {index: rank}};
+    az[k] = wz->second.rbegin()->first; // W[k] : {symbol: {index: rank}};
     // print out
     for (const auto& si : W[k])
         cerr << bitset<B>(reverseBits(si.first)) << ", " << si.first << "\n";
@@ -360,6 +365,7 @@ void mspbwt(const std::string& vcfpanel, const std::string& vcfquery, const std:
             auto wz = W[k].upper_bound(zg[k]) == W[k].begin() ? W[k].begin() : prev(W[k].upper_bound(zg[k]));
             if (az[k - 1] < C[k][wz->first])
             {
+                j++;
                 az[k] = C[k][wz->first];
             }
             else
