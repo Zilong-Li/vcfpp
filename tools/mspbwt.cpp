@@ -23,21 +23,18 @@ T reverseBits(T n, size_t B = sizeof(T) * 8)
     return rv;
 }
 
-using IntGridVec = vector<uint32_t>;
-using IntSet = set<uint32_t, less<uint32_t>>;
-using IntMap = unordered_map<uint32_t, uint32_t>;
-using IntVecMap = unordered_map<uint32_t, std::vector<uint32_t>>;
-using SymbolIdxMap = map<uint32_t, uint32_t, less<uint32_t>>;
-using WgSymbolMap = map<uint32_t, SymbolIdxMap, less<uint32_t>>;
+using grid_t = uint32_t;
+using IntGridVec = vector<grid_t>;
+using IntSet = set<grid_t, less<grid_t>>;
+using IntMap = unordered_map<grid_t, uint32_t>; // {symbol : index}
+using IntVecMap = unordered_map<grid_t, std::vector<uint32_t>>;  // {symbol : vec(index)}
+using SymbolIdxMap = map<uint32_t, uint32_t, less<grid_t>>; // {index: rank}
+using WgSymbolMap = map<grid_t, SymbolIdxMap, less<grid_t>>; // {symbol:{index:rank}}
 
-vector<uint32_t> encodeZgrid(const vector<bool>& z, int G);
-vector<bool> randhapz(uint64_t M);
-IntMap build_C(const IntGridVec& x, const IntSet& s);
-WgSymbolMap save_W(const IntGridVec& x, const IntSet& s);
-IntVecMap build_W(const IntGridVec& x, const IntSet& s, const IntMap& C);
-void mspbwt(const std::string& vcfpanel, const std::string& samples, const std::string& region, int q, int ki);
 
 void coutZYk(const vector<IntGridVec>& X, const vector<vector<int>>& A, const IntGridVec& zg, const vector<int>& az, int k, bool bit = 1);
+
+void mspbwt(const std::string& vcfpanel, const std::string& samples, const std::string& region, int q, int ki, int fast);
 
 int main(int argc, char* argv[])
 {
@@ -53,11 +50,12 @@ int main(int argc, char* argv[])
                   << "     -r    chromosome to be included\n"
                   << "     -q    first n numer of samples as query [1]\n"
                   << "     -k    Y[k] to show. [1]\n"
+                  << "     -f    fast mode for building indices. more ram. [1]\n"
                   << std::endl;
         return 1;
     }
     std::string vcfpanel, vcfquery, outvcf = "-", samples = "-", region = "";
-    int q{1}, k{1};
+    int q{1}, k{1}, fast{1};
     for (int i = 0; i < args.size(); i++)
     {
         if (args[i] == "-p")
@@ -70,19 +68,21 @@ int main(int argc, char* argv[])
             q = stoi(args[++i]);
         if (args[i] == "-k")
             k = stoi(args[++i]);
+        if (args[i] == "-f")
+            fast = stoi(args[++i]);
     }
 
     // ========= core calculation part ===========================================
 
-    mspbwt(vcfpanel, samples, region, q, k);
+    mspbwt(vcfpanel, samples, region, q, k, fast);
 
     return 0;
 }
 
-vector<uint32_t> encodeZgrid(const vector<bool>& z, int G)
+IntGridVec encodeZgrid(const vector<bool>& z, int G)
 {
-    vector<uint32_t> zg(G);
-    const int B = 32;
+    IntGridVec zg(G);
+    const int B = sizeof(grid_t) * 8;
     size_t m{0}, k{0}, M{z.size()};
     for (m = 0; m < M; m++)
     {
@@ -151,7 +151,7 @@ vector<bool> randhapz(uint64_t M)
     vector<bool> z(M);
     for (uint64_t i = 0; i < M; i++)
     {
-        z[i] = dist(gen) > 3;
+        z[i] = dist(gen) > 4;
     }
     return z;
 }
@@ -213,9 +213,9 @@ IntVecMap build_W(const IntGridVec& x, const IntSet& s, const IntMap& C)
     return W;
 }
 
-void mspbwt(const std::string& vcfpanel, const std::string& samples, const std::string& region, int q, int ki)
+void mspbwt(const std::string& vcfpanel, const std::string& samples, const std::string& region, int q, int ki, int fast)
 {
-    const int B = 32;
+    const int B = sizeof(grid_t) * 8;
     BcfReader vcf(vcfpanel, samples, region);
     BcfRecord var(vcf.header);
     // N haplotypes, M SNPs, G Grids, k Current grid, m Current SNP
@@ -316,22 +316,31 @@ void mspbwt(const std::string& vcfpanel, const std::string& samples, const std::
         C[k] = build_C(y0, symbols);
         // here save current W, which differs from build whole W table
         W[k] = save_W(y0, symbols);
-        // without Wg=build_W (S x N) is slow but memory efficient
-        for (i = 0; i < Np; i++)
+        if (fast)
         {
-            w = C[k][y0[i]];
-            if (i >= W[k][y0[i]].begin()->first)
+            auto Wg = build_W(y0, symbols, C[k]); // here Wg is S x N
+            for (i = 0; i < Np; i++)
+                A[k + 1][Wg[y0[i]][i] - 1] = a0[i];
+        }
+        else
+        {
+            // without Wg = build_W is slow but memory efficient
+            for (i = 0; i < Np; i++)
             {
-                for (const auto& [sidx, rank] : W[k][y0[i]])
+                w = C[k][y0[i]];
+                if (i >= W[k][y0[i]].begin()->first)
                 {
-                    if (sidx == i)
+                    for (const auto& [sidx, rank] : W[k][y0[i]])
                     {
-                        w += rank + 1;
-                        break;
+                        if (sidx == i)
+                        {
+                            w += rank + 1;
+                            break;
+                        }
                     }
                 }
+                A[k + 1][w - 1] = a0[i];
             }
-            A[k + 1][w - 1] = a0[i];
         }
         // next run
         a0 = A[k + 1];
