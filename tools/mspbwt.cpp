@@ -48,14 +48,14 @@ int main(int argc, char* argv[])
                   << "\nOptions:\n"
                   << "     -p    vcf/bcf file of reference panel\n"
                   << "     -r    chromosome to be included\n"
-                  << "     -q    first n numer of samples as query [1]\n"
+                  << "     -q    first n numer of samples as query.[1]\n"
                   << "     -k    Y[k] to show. [1]\n"
-                  << "     -f    fast mode for building indices. more ram. [1]\n"
+                  << "     -f    force fast mode for building indices more ram.[0]\n"
                   << std::endl;
         return 1;
     }
     std::string vcfpanel, vcfquery, outvcf = "-", samples = "-", region = "";
-    int q{1}, k{1}, fast{1};
+    int q{1}, k{1}, fast{0};
     for (int i = 0; i < args.size(); i++)
     {
         if (args[i] == "-p")
@@ -159,7 +159,7 @@ vector<bool> randhapz(uint64_t M)
 
 IntMap build_C(const IntGridVec& x, const IntSet& s)
 {
-    uint32_t c{0}, n{0}, cap{0};
+    uint32_t c{0};
     IntMap C;
     for (const auto& si : s)
     {
@@ -170,8 +170,6 @@ IntMap build_C(const IntGridVec& x, const IntSet& s)
                 c++;
         }
         C[si] = c;
-        if (++n == cap && cap > 0)
-            break;
     }
 
     return C;
@@ -222,7 +220,8 @@ void mspbwt(const std::string& vcfpanel, const std::string& samples, const std::
     uint64_t Nq{0}, Np{0}, M{0}, G{0}, k{0}, m{0}, i{0}, j{0}, w{0};
     Nq = q * 2;
     Np = vcf.nsamples * 2 - Nq;
-    M = vcf.get_region_records(region);
+    while (vcf.getNextVariant(var))
+        M++;
     G = (M + B - 1) / B;
     cerr << "Haps(Np):" << Np << "\tHaps(Nq):" << Nq << "\tSNPs(M):" << M << "\tGrids(G):" << G << "\tInt(B):" << B << endl;
     vector<IntGridVec> X, Z; // Grids x Haps
@@ -316,7 +315,7 @@ void mspbwt(const std::string& vcfpanel, const std::string& samples, const std::
         C[k] = build_C(y0, symbols);
         // here save current W, which differs from build whole W table
         W[k] = save_W(y0, symbols);
-        if (fast)
+        if ((symbols.size() < 256) || fast)
         {
             auto Wg = build_W(y0, symbols, C[k]); // here Wg is S x N
             for (i = 0; i < Np; i++)
