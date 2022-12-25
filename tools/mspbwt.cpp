@@ -1,4 +1,4 @@
-// -*- compile-command: "g++ mspbwt.cpp -std=c++17 -g -O3 -Wall -lhts -lz -lm -lbz2 -llzma -lcurl && ./a.out -p panel.vcf.gz -k 1 -r chr22 > t" -*-
+// -*- compile-command: "g++ mspbwt.cpp -std=c++17 -g -O3 -Wall -lhts -lz -lm -lbz2 -llzma -lcurl && ./a.out -p panel.vcf.gz -k 4 -r chr22 > t" -*-
 #include "../vcfpp.h"
 
 #include <algorithm>
@@ -114,7 +114,7 @@ void coutZYk(const vector<IntGridVec>& X, const vector<vector<int>>& A, const In
     const size_t B = sizeof(X[0][0]) * 8;
     for (size_t i = 0; i < X[0].size(); i++)
     {
-        for (int j = 0; j <= k + 1; j++)
+        for (int j = 0; j <= k + 3; j++)
         {
             auto rb = reverseBits(X[j][A[k + 1][i]]);
             if (bit)
@@ -128,7 +128,7 @@ void coutZYk(const vector<IntGridVec>& X, const vector<vector<int>>& A, const In
         {
             // print out original Z bits
             cout << "========= zg is inserting here ========  k-1=" << k << ", az[k-1]=" << az[k] << endl;
-            for (int j = 0; j <= k + 1; j++)
+            for (int j = 0; j <= k + 3; j++)
             {
                 auto rb = reverseBits(zg[j]);
                 if (bit)
@@ -352,8 +352,9 @@ void mspbwt(const std::string& vcfpanel, const std::string& samples, const std::
     k = 0, j = 0;
     // binary search for the closest symbol to zg[k] in W[k] keys if not exists
     auto wz = W[k].upper_bound(zg[k]) == W[k].begin() ? W[k].begin() : prev(W[k].upper_bound(zg[k]));
-    // for k=0, start with random occurrence of the symbol. and put zg at that position
-    az[k] = wz->second.rbegin()->first; // W[k] : {symbol: {index: rank}};
+    // // W[k] : {symbol: {index: rank}}
+    az[k] = wz->second.rbegin()->first;  // for k=0, put zg at the end
+    // az[k] = wz->second.begin()->first; // for k=0, put zg at the front
     // print out
     for (const auto& si : W[k])
         cerr << bitset<B>(reverseBits(si.first)) << ", " << si.first << "\n";
@@ -363,24 +364,16 @@ void mspbwt(const std::string& vcfpanel, const std::string& samples, const std::
     // for k > 0
     for (k = 1; k < G; k++)
     {
-        auto wz = W[k].upper_bound(zg[k]) == W[k].begin() ? *W[k].begin() : *prev(W[k].upper_bound(zg[k]));
-        if (az[k - 1] < C[k][wz.first])
+        auto wz = W[k].upper_bound(zg[k]) == W[k].begin() ? W[k].begin() : prev(W[k].upper_bound(zg[k]));
+        if (az[k - 1] < C[k][wz->first])
         {
-            az[k] = C[k][wz.first];
+            j++;
+            az[k] = C[k][wz->first];
         }
         else
         {
-            auto wz = W[k].upper_bound(zg[k]) == W[k].begin() ? W[k].begin() : prev(W[k].upper_bound(zg[k]));
-            if (az[k - 1] < C[k][wz->first])
-            {
-                j++;
-                az[k] = C[k][wz->first];
-            }
-            else
-            {
-                auto wi = wz->second.upper_bound(az[k - 1]) == wz->second.begin() ? *wz->second.begin() : *prev(wz->second.upper_bound(az[k - 1]));
-                az[k] = wi.second + C[k][wz->first];
-            }
+            auto wi = wz->second.upper_bound(az[k - 1]) == wz->second.begin() ? wz->second.begin() : prev(wz->second.upper_bound(az[k - 1]));
+            az[k] = wi->second + C[k][wz->first];
         }
     }
     for (const auto& ai : az)

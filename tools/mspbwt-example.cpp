@@ -64,10 +64,10 @@ T reverseBits(T n, size_t B = sizeof(T) * 8)
 using grid_t = uint32_t;
 using IntGridVec = vector<grid_t>;
 using IntSet = set<grid_t, less<grid_t>>;
-using IntMap = unordered_map<grid_t, uint32_t>; // {symbol : index}
-using IntVecMap = unordered_map<grid_t, std::vector<uint32_t>>;  // {symbol : vec(index)}
-using SymbolIdxMap = map<uint32_t, uint32_t, less<grid_t>>; // {index: rank}
-using WgSymbolMap = map<grid_t, SymbolIdxMap, less<grid_t>>; // {symbol:{index:rank}}
+using IntMap = unordered_map<grid_t, uint32_t>;                 // {symbol : index}
+using IntVecMap = unordered_map<grid_t, std::vector<uint32_t>>; // {symbol : vec(index)}
+using SymbolIdxMap = map<uint32_t, uint32_t, less<grid_t>>;     // {index: rank}
+using WgSymbolMap = map<grid_t, SymbolIdxMap, less<grid_t>>;    // {symbol:{index:rank}}
 
 void mspbwt(const std::string& vcfpanel, const std::string& samples, const std::string& region, int q, int fast);
 
@@ -218,18 +218,26 @@ void mspbwt(const std::string& vcfpanel, const std::string& samples, const std::
     uint64_t Nq{0}, Np{0}, M{0}, G{0}, k{0}, m{0}, i{0}, j{0}, w{0}; // N haplotypes, M SNPs, G Grids, k Current grid, m Current SNP
     Nq = q * 2;
     Np = vcf.nsamples * 2 - Nq;
+    vector<bool> gt;
     while (vcf.getNextVariant(var))
+    {
+        var.getGenotypes(gt);
+        if (!var.isNoneMissing() || !var.allPhased())
+            continue;
         M++;
+    }
     G = (M + B - 1) / B;
     cerr << "Haps(Np):" << Np << "\tHaps(Nq):" << Nq << "\tSNPs(M):" << M << "\tGrids(G):" << G << "\tInt(B):" << B << endl;
     vector<IntGridVec> X, Z; // Grids x Haps
     X.resize(G, IntGridVec(Np));
     Z.resize(Nq, IntGridVec(G));
     vcf.setRegion(region); // seek back to region
-    vector<bool> gt;
     while (vcf.getNextVariant(var))
     {
+        // check if var has missing of phased values
         var.getGenotypes(gt);
+        if (!var.isNoneMissing() || !var.allPhased())
+            continue;
         // update current grids
         for (i = 0; i < gt.size(); i++)
         {
@@ -364,11 +372,11 @@ void mspbwt(const std::string& vcfpanel, const std::string& samples, const std::
             }
             else
             {
-                auto wi = wz->second.upper_bound(az[k - 1]) == wz->second.begin() ? *wz->second.begin() : *prev(wz->second.upper_bound(az[k - 1]));
-                az[k] = wi.second + C[k][wz->first];
+                auto wi = wz->second.upper_bound(az[k - 1]) == wz->second.begin() ? wz->second.begin() : prev(wz->second.upper_bound(az[k - 1]));
+                az[k] = wi->second + C[k][wz->first];
             }
         }
         cerr << "elapsed time of query hap z: " << tm.reltime() << " milliseconds. " << j << "/" << G << " grids skipped searching\n";
     }
-    cerr << "elapsed time of whole program: " << tm.abstime() << " seconds."<< endl;
+    cerr << "elapsed time of whole program: " << tm.abstime() << " seconds." << endl;
 }
