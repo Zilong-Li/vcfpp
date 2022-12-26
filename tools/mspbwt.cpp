@@ -1,4 +1,4 @@
-// -*- compile-command: "g++ mspbwt.cpp -std=c++17 -g -O3 -Wall -lhts -lz -lm -lbz2 -llzma -lcurl && ./a.out -p panel.vcf.gz -k 4 -r chr22 > t" -*-
+// -*- compile-command: "g++ mspbwt.cpp -std=c++17 -g -O3 -Wall -lhts -lz -lm -lbz2 -llzma -lcurl && ./a.out -p panel.vcf.gz -k 2 -r chr22 > t" -*-
 #include "../vcfpp.h"
 
 #include <algorithm>
@@ -26,10 +26,10 @@ T reverseBits(T n, size_t B = sizeof(T) * 8)
 using grid_t = uint32_t;
 using IntGridVec = vector<grid_t>;
 using IntSet = set<grid_t, less<grid_t>>;
-using IntMap = unordered_map<grid_t, uint32_t>; // {symbol : index}
-using IntVecMap = unordered_map<grid_t, std::vector<uint32_t>>;  // {symbol : vec(index)}
-using SymbolIdxMap = map<uint32_t, uint32_t, less<grid_t>>; // {index: rank}
-using WgSymbolMap = map<grid_t, SymbolIdxMap, less<grid_t>>; // {symbol:{index:rank}}
+using IntMap = unordered_map<grid_t, uint32_t>;                 // {symbol : index}
+using IntVecMap = unordered_map<grid_t, std::vector<uint32_t>>; // {symbol : vec(index)}
+using SymbolIdxMap = map<uint32_t, uint32_t, less<grid_t>>;     // {index: rank}
+using WgSymbolMap = map<grid_t, SymbolIdxMap, less<grid_t>>;    // {symbol:{index:rank}}
 
 
 void coutZYk(const vector<IntGridVec>& X, const vector<vector<int>>& A, const IntGridVec& zg, const vector<int>& az, int k, bool bit = 1);
@@ -351,9 +351,13 @@ void mspbwt(const std::string& vcfpanel, const std::string& samples, const std::
     vector<int> az(G); // use int for index to be compatibable to R
     k = 0, j = 0;
     // binary search for the closest symbol to zg[k] in W[k] keys if not exists
-    auto wz = W[k].upper_bound(zg[k]) == W[k].begin() ? W[k].begin() : prev(W[k].upper_bound(zg[k]));
-    // // W[k] : {symbol: {index: rank}}
-    az[k] = wz->second.rbegin()->first;  // for k=0, put zg at the end
+    auto wz = W[k].lower_bound(zg[k]);
+    if (wz != W[k].end())
+        az[k] = 0 + C[k][wz->first];
+        // az[k] = wz->second.begin()->second + C[k][wz->first];
+    else
+        az[k] = Np;
+    // W[k] : {symbol: {index: rank}}
     // az[k] = wz->second.begin()->first; // for k=0, put zg at the front
     // print out
     for (const auto& si : W[k])
@@ -364,16 +368,32 @@ void mspbwt(const std::string& vcfpanel, const std::string& samples, const std::
     // for k > 0
     for (k = 1; k < G; k++)
     {
-        auto wz = W[k].upper_bound(zg[k]) == W[k].begin() ? W[k].begin() : prev(W[k].upper_bound(zg[k]));
+        // auto wz = W[k].upper_bound(zg[k]) == W[k].begin() ? W[k].begin() : prev(W[k].upper_bound(zg[k]));
+        auto wz = W[k].lower_bound(zg[k]);
+        if (wz == W[k].end())
+        {
+            az[k] = Np;
+            continue;
+        }
         if (az[k - 1] < C[k][wz->first])
         {
-            j++;
             az[k] = C[k][wz->first];
         }
         else
         {
-            auto wi = wz->second.upper_bound(az[k - 1]) == wz->second.begin() ? wz->second.begin() : prev(wz->second.upper_bound(az[k - 1]));
-            az[k] = wi->second + C[k][wz->first];
+            auto wi = wz->second.upper_bound(az[k - 1]);
+            if (wi == wz->second.end())
+            {
+                az[k] = wz->second.rbegin()->second + C[k][wz->first];  // rank == the last
+            }
+            else if (wi == wz->second.begin())
+            {
+                az[k] = wz->second.begin()->second - 1 + C[k][wz->first]; // rank - 1 in the front
+            }
+            else
+            {
+                az[k] = prev(wi)->second + C[k][wz->first];  // rank == the previous
+            }
         }
     }
     for (const auto& ai : az)
