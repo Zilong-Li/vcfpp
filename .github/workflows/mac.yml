@@ -26,5 +26,3 @@ jobs:
         make
         ./bcf-reader.bin
         ./bcf-writer.bin
-        ./bcf-eigen.bin
-        # find . -name "*.bin" -exec '{}' --success ';'
