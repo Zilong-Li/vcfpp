@@ -52,31 +52,40 @@ extern "C"
 namespace vcfpp
 {
     template <typename T>
-    using isValidFMT = typename std::enable_if<std::is_same<T, std::string>::value || std::is_same<T, std::vector<char>>::value ||
-                                                   std::is_same<T, std::vector<int>>::value || std::is_same<T, std::vector<float>>::value,
-                                               bool>::type;
+    using isValidFMT = typename std::enable_if<
+        std::is_same<T, std::string>::value || std::is_same<T, std::vector<char>>::value ||
+            std::is_same<T, std::vector<int>>::value || std::is_same<T, std::vector<float>>::value,
+        bool>::type;
 
     template <typename T>
-    using isValidInfo =
-        typename std::enable_if<std::is_same<T, std::string>::value || std::is_same<T, std::vector<int>>::value || std::is_same<T, std::vector<float>>::value,
-                                bool>::type;
+    using isValidInfo = typename std::enable_if<std::is_same<T, std::string>::value ||
+                                                    std::is_same<T, std::vector<int>>::value ||
+                                                    std::is_same<T, std::vector<float>>::value,
+                                                bool>::type;
 
     template <typename T>
-    using isInfoVector = typename std::enable_if<std::is_same<T, std::vector<int>>::value || std::is_same<T, std::vector<float>>::value, bool>::type;
+    using isInfoVector = typename std::enable_if<
+        std::is_same<T, std::vector<int>>::value || std::is_same<T, std::vector<float>>::value, bool>::type;
 
     template <typename T>
-    using isScalar = typename std::enable_if<std::is_same<T, int>::value || std::is_same<T, float>::value || std::is_same<T, double>::value, bool>::type;
+    using isScalar = typename std::enable_if<std::is_same<T, int>::value || std::is_same<T, float>::value ||
+                                                 std::is_same<T, double>::value,
+                                             bool>::type;
 
     template <typename T>
     using isString = typename std::enable_if<std::is_same<T, std::string>::value, void>::type;
 
     template <typename T>
-    using isValidGT = typename std::enable_if<
-        std::is_same<T, std::vector<bool>>::value || std::is_same<T, std::vector<char>>::value || std::is_same<T, std::vector<int>>::value, bool>::type;
+    using isValidGT = typename std::enable_if<std::is_same<T, std::vector<bool>>::value ||
+                                                  std::is_same<T, std::vector<char>>::value ||
+                                                  std::is_same<T, std::vector<int>>::value,
+                                              bool>::type;
 
     template <typename T>
-    using isFormatVector = typename std::enable_if<
-        std::is_same<T, std::vector<float>>::value || std::is_same<T, std::vector<char>>::value || std::is_same<T, std::vector<int>>::value, bool>::type;
+    using isFormatVector = typename std::enable_if<std::is_same<T, std::vector<float>>::value ||
+                                                       std::is_same<T, std::vector<char>>::value ||
+                                                       std::is_same<T, std::vector<int>>::value,
+                                                   bool>::type;
 
 
     template <typename T>
@@ -140,9 +149,11 @@ namespace vcfpp
          *  @param type Integer, Floast or String
          *  @param description Description of the tag
          *  */
-        inline void addINFO(const std::string& id, const std::string& number, const std::string& type, const std::string& description)
+        inline void addINFO(const std::string& id, const std::string& number, const std::string& type,
+                            const std::string& description)
         {
-            addLine("##INFO=<ID=" + id + ",Number=" + number + ",Type=" + type + ",Description=\"" + description + "\">");
+            addLine("##INFO=<ID=" + id + ",Number=" + number + ",Type=" + type + ",Description=\"" +
+                    description + "\">");
         }
 
         /** @brief add FORMAT field to header
@@ -151,9 +162,11 @@ namespace vcfpp
          *  @param type Integer, Floast or String
          *  @param description Description of the tag
          *  */
-        inline void addFORMAT(const std::string& id, const std::string& number, const std::string& type, const std::string& description)
+        inline void addFORMAT(const std::string& id, const std::string& number, const std::string& type,
+                              const std::string& description)
         {
-            addLine("##FORMAT=<ID=" + id + ",Number=" + number + ",Type=" + type + ",Description=\"" + description + "\">");
+            addLine("##FORMAT=<ID=" + id + ",Number=" + number + ",Type=" + type + ",Description=\"" +
+                    description + "\">");
         }
 
         /**
@@ -268,13 +281,10 @@ namespace vcfpp
         {
             int ret = 0;
             ret = bcf_hdr_set_samples(hdr, samples.c_str(), 0);
-            if (ret > 0)
+            if (ret != 0)
             {
-                throw std::runtime_error("the " + std::to_string(ret) + "-th sample are not in the VCF.\n");
-            }
-            else if (ret == -1)
-            {
-                throw std::runtime_error("couldn't set samples. something wrong.\n");
+                throw std::runtime_error("the " + std::to_string(ret) +
+                                         "-th sample are not in the VCF.\nparameter samples:" + samples);
             }
         }
 
@@ -564,7 +574,8 @@ namespace vcfpp
             }
             if (ret < 0)
             {
-                throw std::runtime_error("couldn't set " + tag + " for this variant.\nplease add the tag in header first.\n");
+                throw std::runtime_error("couldn't set " + tag +
+                                         " for this variant.\nplease add the tag in header first.\n");
             }
             else
             {
@@ -591,7 +602,8 @@ namespace vcfpp
             else if (bcf_hdr_id2type(header.hdr, BCF_HL_INFO, tag_id) == (BCF_HT_STR & 0xff))
                 ret = bcf_update_info_string(header.hdr, line, tag.c_str(), v.data());
             if (ret < 0)
-                throw std::runtime_error("couldn't set " + tag + " for this variant.\nplease add the tag in header first.\n");
+                throw std::runtime_error("couldn't set " + tag +
+                                         " for this variant.\nplease add the tag in header first.\n");
             else
                 return true;
         }
@@ -821,6 +833,12 @@ namespace vcfpp
         }
 
         /** @brief modify position given 1-based value */
+        inline void setAlleleStr(const char* alleles_string)
+        {
+            bcf_update_alleles_str(header.hdr, line, alleles_string);
+        }
+
+        /** @brief modify position given 1-based value */
         inline void setPOS(int64_t p)
         {
             line->pos = p - 1;
@@ -1001,7 +1019,8 @@ namespace vcfpp
          *                  "" : exclude all samples
          *  @param region samtools-like region "chr:start-end", skip if empty
          */
-        BcfReader(const std::string& file, const std::string& samples, const std::string& region) : fname(file)
+        BcfReader(const std::string& file, const std::string& samples, const std::string& region)
+            : fname(file)
         {
             open(file);
             header.setSamples(samples);
