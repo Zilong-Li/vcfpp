@@ -2,7 +2,7 @@
  * @file        https://github.com/Zilong-Li/vcfpp/vcfpp.h
  * @author      Zilong Li
  * @email       zilong.dk@gmail.com
- * @version     v0.1.3
+ * @version     v0.1.4
  * @breif       a single C++ file for manipulating VCF
  * Copyright (C) 2022. The use of this code is governed by the LICENSE file.
  ******************************************************************************/
@@ -316,13 +316,24 @@ namespace vcfpp
         friend class BcfReader;
         friend class BcfWriter;
 
+    private:
+        BcfHeader header;
+        bcf1_t* line = bcf_init(); // current bcf record
+        bcf_hdr_t* hdr_d;          // a dup header by bcf_hdr_dup(header->hdr)
+        bcf_fmt_t* fmt = NULL;
+        bcf_info_t* info = NULL;
+        int32_t* gts = NULL;
+        int ndst, ret, nsamples;
+        bool noneMissing = true; // whenever parsing a tag have to reset this variable
+        bool isAllPhased = false;
+
     public:
         /** @brief initilize a BcfRecord object using a given BcfHeader object. */
         BcfRecord(const BcfHeader& h) : header(h)
         {
             nsamples = header.nSamples();
             typeOfGT.resize(nsamples);
-            gtPhase.resize(nsamples);
+            gtPhase.resize(nsamples, 0);
         }
 
         virtual ~BcfRecord()
@@ -626,7 +637,7 @@ namespace vcfpp
         }
 
         /**
-         * @brief set genotypes for all samples
+         * @brief set genotypes from scratch assume genotype not present
          * @param v valid input include vector<int>, vector<float>, std::string
          * @return bool
          * */
@@ -634,10 +645,39 @@ namespace vcfpp
         isValidGT<T> setGenotypes(const T& v)
         {
             // bcf_gt_type
+            int i, j, k;
+            nploidy = v.size() / nsamples;
+            gts = (int*)malloc(nsamples * nploidy * sizeof(int));
+            for (i = 0; i < nsamples; i++)
+            {
+                for (j = 0; j < nploidy; j++)
+                {
+                    k = i * nploidy + j;
+                    if (gtPhase[i])
+                        gts[k] = bcf_gt_phased(v[k]);
+                    else
+                        gts[k] = bcf_gt_unphased(v[k]);
+                }
+            }
+            if (bcf_update_genotypes(header.hdr, line, gts, v.size()) < 0)
+                throw std::runtime_error("couldn't set genotypes correctly.\n");
+            else
+                return true;
+        }
+
+        /**
+         * @brief update genotypes for current record, assume genotypes present
+         * @param v valid input include vector<int>, vector<float>, std::string
+         * @return bool
+         * */
+        template <class T>
+        isValidGT<T> updateGenotypes(const T& v)
+        {
+            // bcf_gt_type
             ndst = 0;
             ret = bcf_get_genotypes(header.hdr, line, &gts, &ndst);
             if (ret <= 0)
-                return false; // gt not present
+                throw std::runtime_error("genotypes not present for current record.\n");
             assert(ret == v.size());
             nploidy = ret / nsamples;
             int i, j, k;
@@ -957,17 +997,6 @@ namespace vcfpp
         int nploidy = 0;
         /// the number of values for a tag in FORMAT
         int nvalues = 0;
-
-    private:
-        BcfHeader header;
-        bcf1_t* line = bcf_init(); // current bcf record
-        bcf_hdr_t* hdr_d;          // a dup header by bcf_hdr_dup(header->hdr)
-        bcf_fmt_t* fmt = NULL;
-        bcf_info_t* info = NULL;
-        int32_t* gts = NULL;
-        int ndst, ret, nsamples;
-        bool noneMissing = true; // whenever parsing a tag have to reset this variable
-        bool isAllPhased = false;
     };
 
     /**

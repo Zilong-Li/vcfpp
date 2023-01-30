@@ -43,7 +43,7 @@ TEST_CASE("Write VCF with custome header and variants", "[bcf-writer]")
 
 TEST_CASE("Write VCF by copying header from another VCF", "[bcf-writer]")
 {
-    BcfReader br("../htslib/test/test-vcf-hdr-in.vcf");
+    BcfReader br("test-vcf-read.vcf");
     BcfRecord v(br.header);
     BcfWriter bw("test.vcf", br.header);
     bw.writeHeader();
