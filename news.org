@@ -1,0 +1,15 @@
+#+title: News and Changes
+
+* v0.1.4
+- add updateGenotypes, setAlleleStr
+- update clang format
+- bug fix
+* v0.1.3
+- add some tools
+- bug fix
+* v0.1.2
+- fix writer
+* v0.1.1
+- fix inconsistency style
+* v0.1.0
+- first release
