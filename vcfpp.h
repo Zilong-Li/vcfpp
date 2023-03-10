@@ -4,7 +4,7 @@
  * @email       zilong.dk@gmail.com
  * @version     v0.1.4
  * @breif       a single C++ file for manipulating VCF
- * Copyright (C) 2022-2023. The use of this code is governed by the LICENSE file.
+ * Copyright (C) 2022-2023.The use of this code is governed by the LICENSE file.
  ******************************************************************************/
 
 /*! \mainpage The documentation of the single C++ file *vcfpp.h* for manipulating VCF/BCF
@@ -128,6 +128,10 @@ class BcfHeader
     friend class BcfRecord;
     friend class BcfReader;
     friend class BcfWriter;
+
+  private:
+    bcf_hdr_t * hdr = NULL; // bcf header
+    bcf_hrec_t * hrec = NULL; // populate header
 
   public:
     BcfHeader() {}
@@ -300,10 +304,6 @@ class BcfHeader
     {
         return bcf_hdr_nsamples(hdr);
     }
-
-  private:
-    bcf_hdr_t * hdr = NULL; // bcf header
-    bcf_hrec_t * hrec = NULL; // populate header
 };
 
 /**
@@ -859,6 +859,12 @@ class BcfRecord
         bcf_update_alleles_str(header.hdr, line, alleles_string);
     }
 
+    /** @brief modify CHROM value */
+    inline void setCHR(const char * chr)
+    {
+        line->rid = bcf_hdr_name2id(header.hdr, chr);
+    }
+
     /** @brief modify position given 1-based value */
     inline void setPOS(int64_t p)
     {
@@ -985,7 +991,23 @@ class BcfRecord
  **/
 class BcfReader
 {
+  private:
+    htsFile * fp = NULL; // hts file
+    hts_idx_t * hidx = NULL; // hts index file
+    tbx_t * tidx = NULL; // .tbi .csi index file for vcf files
+    hts_itr_t * itr = NULL; // hts records iterator
+    kstring_t s = {0, 0, NULL}; // kstring
+    std::string fname;
+    bool isBcf; // if the input file is bcf or vcf;
+
   public:
+    /** @brief a BcfHeader object */
+    BcfHeader header;
+    /** @brief number of samples in the VCF */
+    int nsamples;
+    /** @brief number of samples in the VCF */
+    std::vector<std::string> SamplesName;
+
     /// Construct an empty BcfReader
     BcfReader() {}
 
@@ -1159,22 +1181,6 @@ class BcfReader
             return (ret == 0);
         }
     }
-
-    /** @brief a BcfHeader object */
-    BcfHeader header;
-    /** @brief number of samples in the VCF */
-    int nsamples;
-    /** @brief number of samples in the VCF */
-    std::vector<std::string> SamplesName;
-
-  private:
-    htsFile * fp = NULL; // hts file
-    hts_idx_t * hidx = NULL; // hts index file
-    tbx_t * tidx = NULL; // .tbi .csi index file for vcf files
-    hts_itr_t * itr = NULL; // hts records iterator
-    kstring_t s = {0, 0, NULL}; // kstring
-    std::string fname;
-    bool isBcf; // if the input file is bcf or vcf;
 };
 
 /**
@@ -1184,7 +1190,17 @@ class BcfReader
  **/
 class BcfWriter
 {
+  private:
+    htsFile * fp = NULL; // hts file
+    int ret;
+    bcf1_t * b = bcf_init();
+    kstring_t s = {0, 0, NULL}; // kstring
+    bool isHeaderWritten = false;
+
   public:
+    /// header object initialized by initalHeader
+    BcfHeader header;
+
     /// Construct an empty BcfWriter
     BcfWriter() {}
 
@@ -1335,16 +1351,6 @@ class BcfWriter
         else
             return true;
     }
-
-    /// header object initialized by initalHeader
-    BcfHeader header;
-
-  private:
-    htsFile * fp = NULL; // hts file
-    int ret;
-    bcf1_t * b = bcf_init();
-    kstring_t s = {0, 0, NULL}; // kstring
-    bool isHeaderWritten = false;
 };
 
 } // namespace vcfpp
