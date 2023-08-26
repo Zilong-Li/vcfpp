@@ -4,7 +4,6 @@
 [[https://github.com/Zilong-Li/vcfpp/actions/workflows/mac.yml/badge.svg]]
 [[https://zilongli.org/proj/vcfpp/index.html][https://img.shields.io/badge/Documentation-latest-blue.svg]]
 [[https://github.com/Zilong-Li/vcfpp/releases/latest][https://img.shields.io/github/v/release/Zilong-Li/vcfpp.svg]]
-[[https://github.com/Zilong-Li/vcfpp/releases][https://img.shields.io/github/downloads/Zilong-Li/vcfpp/total.svg]]
 [[https://img.shields.io/github/license/Zilong-Li/vcfpp?style=plastic.svg]]
 
 This project introduces vcfpp (vcf plus plus), a single C++ file as interface to the basic =htslib=, which can be easily included in a C++ program
@@ -52,8 +51,8 @@ int main(int argc, char* argv[])
     while (vcf.getNextVariant(var)) {
         if (!var.isSNP()) continue; // skip other type of variants
         var.getGenotypes(gt);
-        for (int i = 0; i < gt.size()/2 ; i++)  // for diploid
-            hetsum[i] += abs(gt[2 * i + 0] - gt[2 * i +1]);
+        for(int i = 0; i < gt.size() / var.nploidy; i++)
+            hetsum[i] += abs(gt[var.nploidy * i + 0] - gt[var.nploidy * i + 1]);
     }
     for (auto i : hetsum) { cout << i << endl; }
     return 0;
