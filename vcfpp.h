@@ -2,7 +2,7 @@
  * @file        https://github.com/Zilong-Li/vcfpp/vcfpp.h
  * @author      Zilong Li
  * @email       zilong.dk@gmail.com
- * @version     v0.1.4
+ * @version     v0.1.5
  * @breif       a single C++ file for manipulating VCF
  * Copyright (C) 2022-2023.The use of this code is governed by the LICENSE file.
  ******************************************************************************/
@@ -82,8 +82,7 @@ using isString = typename std::enable_if<std::is_same<T, std::string>::value, vo
 
 template<typename T>
 using isValidGT = typename std::enable_if<std::is_same<T, std::vector<bool>>::value
-                                              || std::is_same<T, std::vector<char>>::value
-                                              || std::is_same<T, std::vector<int>>::value,
+                                              || std::is_same<T, std::vector<char>>::value,
                                           bool>::type;
 
 template<typename T>
@@ -357,8 +356,8 @@ class BcfRecord
     }
 
     /**
-     * @brief get genotypes and fill in the input vector
-     * @param v valid input includes vector<bool>, vector<char>, vector<int> type
+     * @brief check if no missing then fill in the input vector with genotypes of 0s and 1s
+     * @param v valid input are vector<bool> vector<char> type
      * @return bool
      * */
     template<typename T>
@@ -392,9 +391,8 @@ class BcfRecord
             typeOfGT[i] = bcf_gt_type(fmt, i, NULL, NULL);
             if(typeOfGT[i] == GT_UNKN)
             {
-                noneMissing = false;
-                for(j = 0; j < nploidy; j++) v[i * nploidy + j] = 0;
-                continue;
+                noneMissing = false; // if there is missingness return false and try another function
+                return false;
             }
 
             for(j = 0; j < nploidy_cur; j++)
@@ -405,6 +403,63 @@ class BcfRecord
             if(nploidy == 2)
             {
                 gtPhase[i] = (gts[1 + i * nploidy_cur] & 1) == 1;
+                nphased += gtPhase[i];
+            }
+        }
+        if(nphased == nsamples)
+            isAllPhased = true;
+        else
+            isAllPhased = false;
+        return true;
+    }
+
+    /**
+     * @brief fill in the input vector with genotyps, 0, 1 or -9(missing)
+     * @param v valid input is vector<int> type
+     * @return bool
+     * */
+    bool getGenotypes(std::vector<int> & v)
+    {
+        ndst = 0;
+        ret = bcf_get_genotypes(header.hdr, line, &gts, &ndst);
+        if(ret <= 0) return false; // gt not present
+        // if nploidy is not set manually. find the max nploidy using the first variant (eg. 2) resize v as
+        // max(nploidy)
+        // * nsamples (ret) NOTE: if ret == nsamples and only one sample then haploid
+        if(ret != nploidy * nsamples && nploidy > 0)
+        {
+            // rare case if nploidy is set manually. eg. only one sample. the first variant is '1' but the
+            // second is '1/0'. ret = 1 but nploidy should be 2
+            v.resize(nploidy * nsamples);
+        }
+        else
+        {
+            v.resize(ret);
+            nploidy = ret / nsamples;
+        }
+        int i, j, nphased = 0;
+        noneMissing = true;
+        for(i = 0; i < nsamples; i++)
+        {
+            int32_t * ptr = gts + i * nploidy;
+            int is_phased = 0;
+            for(j = 0; j < nploidy; j++)
+            {
+                // if true, the sample has smaller ploidy
+                if(ptr[j] == bcf_int32_vector_end) break;
+                // missing allele
+                if(bcf_gt_is_missing(ptr[j]))
+                {
+                    noneMissing = false;
+                    v[i * nploidy + j] = -9;
+                    continue;
+                }
+                v[i * nploidy + j] = bcf_gt_allele(ptr[j]);
+                is_phased += bcf_gt_is_phased(ptr[j]);
+            }
+            if(nploidy == is_phased)
+            {
+                gtPhase[i] = true;
                 nphased += gtPhase[i];
             }
         }
@@ -975,7 +1030,7 @@ class BcfRecord
      * */
     std::vector<char> typeOfGT;
 
-    /** @brief vector of nsamples length. keep track of the phasing status of each sample (for dploidy) */
+    /** @brief vector of nsamples length. keep track of the phasing status of each sample */
     std::vector<char> gtPhase;
 
     /// the number of ploidy

@@ -35,6 +35,5 @@ jobs:
       run: |
         cd test
         make
-        ./bcf-reader.bin
-        ./bcf-writer.bin
+        make test
         # find . -name "*.bin" -exec '{}' --success ';'

@@ -24,3 +24,6 @@ test: $(BINS) $(OBJS)
 
 clean:
 	rm -f *.o *.bin
+
+test:
+	./bcf-reader.bin --success

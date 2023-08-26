@@ -7,12 +7,13 @@
 [[https://github.com/Zilong-Li/vcfpp/releases][https://img.shields.io/github/downloads/Zilong-Li/vcfpp/total.svg]]
 [[https://img.shields.io/github/license/Zilong-Li/vcfpp?style=plastic.svg]]
 
-This project introduces a single C++ file as interface to the basic =htslib=, which can be easily included in a C++ program
+This project introduces vcfpp (vcf plus plus), a single C++ file as interface to the basic =htslib=, which can be easily included in a C++ program
 for scripting high-performance genomic analyses.
 
 Features:
 - single file to be easily included and compiled
-- easy and safe [[https://zilongli.org/proj/vcfpp/index.html][API]] to use. no worry about free memory.
+- easy and safe [[https://zilongli.org/proj/vcfpp/index.html][API]] to use.
+- objects are RAII. no worry about allocate and free memory.
 - has the full functionalities of the =htslib=, eg. supports of compressed VCF/BCF and URL link as filename.
 - compatible with C++11 and later
 
@@ -20,6 +21,8 @@ Features:
 #+BEGIN_QUOTE
 - [[#installation][Installation]]
 - [[#examples][Examples]]
+  - [[#reading-vcf][Reading VCF]]
+  - [[#writing-vcf][Writing VCF]]
 - [[#tools][Tools]]
 #+END_QUOTE
 
@@ -29,30 +32,56 @@ Features:
 
 * Examples
 
-You can copy paste the example code into a =example.cpp= file and compile it by =g++ example.cpp -std=c++11 -O2 -Wall -I. -lhts -lz -lm -lbz2 -llzma -lcurl=
+You can copy paste the example code into a =example.cpp= file and compile it by =g++ example.cpp -std=c++11 -O3 -Wall -I. -lhts -lz -lm -lbz2 -llzma -lcurl=
 
-Let's count the number of heterozygous sites for each sample in all records. The core is *just 10 lines*.
+** Reading VCF
+
+In this example, we count the number of heterozygous sites for each sample in all records. The core is *just 10 lines*.
 
 #+begin_src C++
 #include "vcfpp.h"
 using namespace std;
 using namespace vcfpp;
-
 int main(int argc, char* argv[])
 {
-    // fetch data from 1000 genomes server
+    // read data from 1000 genomes server
     BcfReader vcf("http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000G_2504_high_coverage/working/20220422_3202_phased_SNV_INDEL_SV/1kGP_high_coverage_Illumina.chr22.filtered.SNV_INDEL_SV_phased_panel.vcf.gz");
-    BcfRecord v(vcf.header); // construct a variant record
+    BcfRecord var(vcf.header); // construct a variant record
     vector<char> gt; // genotype can be of bool, char or int type
     vector<int> hetsum(vcf.nsamples);
-    while (vcf.getNextVariant(v)) {
-        if (!v.isSNP()) continue; // skip other type of variants
-        v.getGenotypes(gt);
-        for (int i = 0; i < gt.size()/2 ; i++) { // for diploid
+    while (vcf.getNextVariant(var)) {
+        if (!var.isSNP()) continue; // skip other type of variants
+        var.getGenotypes(gt);
+        for (int i = 0; i < gt.size()/2 ; i++)  // for diploid
             hetsum[i] += abs(gt[2 * i + 0] - gt[2 * i +1]);
-        }
     }
     for (auto i : hetsum) { cout << i << endl; }
+    return 0;
+}
+#+end_src
+
+** Writing VCF
+
+In this example, we read vcf and keep variants with allele freqency AF > 0.05. Meanwhile, we output a new BCF file.
+
+#+begin_src C++
+#include "vcfpp.h"
+using namespace std;
+using namespace vcfpp;
+int main(int argc, char* argv[]) {
+    // read data from 1000 genomes server
+    BcfReader vcf("http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000G_2504_high_coverage/working/20220422_3202_phased_SNV_INDEL_SV/1kGP_high_coverage_Illumina.chr22.filtered.SNV_INDEL_SV_phased_panel.vcf.gz");
+    BcfRecord var(vcf.header); // construct a variant record
+    BcfWriter bw("out.bcf", vcf.header); // construct a vcf writer using same vcf header
+    vector<char> gt; // genotype can be of bool, char or int type
+    while (vcf.getNextVariant(var)) {
+        if (!var.isSNP()) continue; // skip other type of variants
+        var.getGenotypes(gt);
+        int ac = 0;
+        for(auto g : gt) ac += g;
+        if((double)ac / gt.size() > 0.05) continue;
+        bw.writeRecord(var);
+    }
     return 0;
 }
 #+end_src
