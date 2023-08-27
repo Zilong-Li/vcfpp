@@ -86,6 +86,12 @@ using isValidGT = typename std::enable_if<std::is_same<T, std::vector<bool>>::va
                                           bool>::type;
 
 template<typename T>
+using isGtVector = typename std::enable_if<
+    std::is_same<T, std::vector<bool>>::value || std::is_same<T, std::vector<char>>::value
+        || std::is_same<T, std::string>::value || std::is_same<T, std::vector<int>>::value,
+    bool>::type;
+
+template<typename T>
 using isFormatVector = typename std::enable_if<std::is_same<T, std::vector<float>>::value
                                                    || std::is_same<T, std::vector<char>>::value
                                                    || std::is_same<T, std::vector<int>>::value,
@@ -326,6 +332,8 @@ class BcfRecord
     int ndst, ret, nsamples;
     bool noneMissing = true; // whenever parsing a tag have to reset this variable
     bool isAllPhased = false;
+    int nploidy = 0; // the number of ploidy
+    int nvalues = 0; // the number of values for a tag in FORMAT
 
   public:
     /** @brief initilize a BcfRecord object using a given BcfHeader object. */
@@ -356,22 +364,26 @@ class BcfRecord
     }
 
     /**
-     * @brief check if no missing then fill in the input vector with genotypes of 0s and 1s
+     * @brief fill in the input vector with genotypes of 0 and 1. only works for ploidy<=2. genotypes with
+missing allele is coded as heterozygous
      * @param v valid input are vector<bool> vector<char> type
      * @return bool
+     * @note user can use isNoneMissing() to check if there is genotype with missingness. then one can decide
+if the default behaviour of this function is desired. Alternatively, user can use vector<int> as the input
+type as noted in the other overloading function.
      * */
     template<typename T>
     isValidGT<T> getGenotypes(T & v)
     {
         ndst = 0;
         ret = bcf_get_genotypes(header.hdr, line, &gts, &ndst);
-        if(ret <= 1) return false; // gt not present
+        if(ret <= 0) return false; // gt not present
         // if nploidy is not set manually. find the max nploidy using the first variant (eg. 2) resize v as
         // max(nploidy)
         // * nsamples (ret) NOTE: if ret == nsamples and only one sample then haploid
         if(ret != nploidy * nsamples && nploidy > 0)
         {
-            // rare case if noploidy is set manually. eg. only one sample. the first variant is '1' but the
+            // rare case if nploidy is set manually. eg. only one sample. the first variant is '1' but the
             // second is '1/0'. ret = 1 but nploidy should be 2
             v.resize(nploidy * nsamples);
         }
@@ -391,8 +403,10 @@ class BcfRecord
             typeOfGT[i] = bcf_gt_type(fmt, i, NULL, NULL);
             if(typeOfGT[i] == GT_UNKN)
             {
-                noneMissing = false; // if there is missingness return false and try another function
-                return false;
+                noneMissing = false; // set missing as het, user should check if isNoneMissing();
+                v[i * nploidy + 0] = 1;
+                for(j = 1; j < nploidy_cur; j++) v[i * nploidy + j] = 0;
+                continue;
             }
 
             for(j = 0; j < nploidy_cur; j++)
@@ -414,29 +428,19 @@ class BcfRecord
     }
 
     /**
-     * @brief fill in the input vector with genotyps, 0, 1 or -9(missing)
+     * @brief fill in the input vector with genotyps, 0, 1 or -9 (missing).
      * @param v valid input is vector<int> type
      * @return bool
+     * @note this function provides full capability to handl all kinds of genotypes in multi-ploidy data with
+     * the cost of more spae than the other function. missing allele is set as -9.
      * */
     bool getGenotypes(std::vector<int> & v)
     {
         ndst = 0;
         ret = bcf_get_genotypes(header.hdr, line, &gts, &ndst);
         if(ret <= 0) return false; // gt not present
-        // if nploidy is not set manually. find the max nploidy using the first variant (eg. 2) resize v as
-        // max(nploidy)
-        // * nsamples (ret) NOTE: if ret == nsamples and only one sample then haploid
-        if(ret != nploidy * nsamples && nploidy > 0)
-        {
-            // rare case if nploidy is set manually. eg. only one sample. the first variant is '1' but the
-            // second is '1/0'. ret = 1 but nploidy should be 2
-            v.resize(nploidy * nsamples);
-        }
-        else
-        {
-            v.resize(ret);
-            nploidy = ret / nsamples;
-        }
+        v.resize(ret);
+        nploidy = ret / nsamples;
         int i, j, nphased = 0;
         noneMissing = true;
         for(i = 0; i < nsamples; i++)
@@ -687,11 +691,11 @@ class BcfRecord
 
     /**
      * @brief set genotypes from scratch assume genotype not present
-     * @param v valid input include vector<int>, vector<float>, std::string
+     * @param v valid input includevector<bool>, vector<char>, vector<int>, std::string
      * @return bool
      * */
     template<class T>
-    isValidGT<T> setGenotypes(const T & v)
+    isGtVector<T> setGenotypes(const T & v)
     {
         // bcf_gt_type
         int i, j, k;
@@ -716,11 +720,11 @@ class BcfRecord
 
     /**
      * @brief update genotypes for current record, assume genotypes present
-     * @param v valid input include vector<int>, vector<float>, std::string
+     * @param v valid input includevector<bool>, vector<char>, vector<int>, std::string
      * @return bool
      * */
     template<class T>
-    isValidGT<T> updateGenotypes(const T & v)
+    isGtVector<T> updateGenotypes(const T & v)
     {
         // bcf_gt_type
         ndst = 0;
@@ -999,6 +1003,14 @@ class BcfRecord
         }
     }
 
+    /** @brief return raw INFO column as string */
+    inline std::string INFO()
+    {
+        std::string s;
+        auto info = line->d.info;
+        return s;
+    }
+
     /** @brief return boolean value indicates if genotypes of all samples are phased */
     inline bool allPhased() const
     {
@@ -1009,6 +1021,12 @@ class BcfRecord
     inline int ploidy() const
     {
         return nploidy;
+    }
+
+    /** @brief in a rare case, one may want to set the number of ploidy manually */
+    inline void setPloidy(int v)
+    {
+        nploidy = v;
     }
 
     /// return the shape of current tag in FORMAT (nsamples x nvalues)
@@ -1032,11 +1050,6 @@ class BcfRecord
 
     /** @brief vector of nsamples length. keep track of the phasing status of each sample */
     std::vector<char> gtPhase;
-
-    /// the number of ploidy
-    int nploidy = 0;
-    /// the number of values for a tag in FORMAT
-    int nvalues = 0;
 };
 
 /**

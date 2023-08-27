@@ -1,17 +1,7 @@
 #+title: vcfpp: a C++ API for scripting rapid variant analysis
-#+author: Zilong Li
+#+setupfile: latex.org
 #+language: en
 #+options: title:nil toc:nil H:4 author:nil
-#+latex_class: minipaper
-#+latex_header: \usepackage{xcolor}
-#+latex_header: \usepackage{listings}
-#+latex_header: \usepackage{caption}
-#+latex_header: \usepackage{calc}
-#+latex_header: \DeclareCaptionFont{white}{\color{white}}
-#+latex_header: \DeclareCaptionFormat{listing}{\parbox{\textwidth}{\colorbox{gray}{\parbox{\textwidth}{#1#2#3}}\vskip-4pt}}
-#+latex_header: \captionsetup[lstlisting]{format=listing,labelfont=white,textfont=white}
-#+latex_header: \newlength\tdima \newlength\tdimb \setlength\tdima{ \fboxsep+\fboxrule} \setlength\tdimb{-\fboxsep+\fboxrule}
-#+latex_header: \lstset{frame=tlrb,xleftmargin=\tdima,xrightmargin=\tdimb, rulecolor=\color{gray}}
 
 #+begin_export latex
 \author{Zilong Li
@@ -60,13 +50,14 @@ each sample in all records. The core is *just 10 lines*.
 #+attr_latex: :options captionpos=t
 #+begin_src C++ -n
 vcfpp::BcfReader vcf("vcf.gz"); // read vcf.gz
-vcfpp::BcfRecord var(vcf.header); 
+vcfpp::BcfRecord var(vcf.header); // init a variant record
 vector<char> gt; // genotype can be of bool, char or int type
-vector<int> hetsum(vcf.nsamples); // store the het counts
+vector<int> hetsum(vcf.nsamples, 0); // store the het counts
 while (vcf.getNextVariant(var)) {
-    if (!var.isSNP()) continue; // skip other type of variants
     var.getGenotypes(gt);
-    assert(var.nploidy==2); // make sure it is diploidy
+    // analyze SNP variant with no genotype missingness
+    if (!var.isSNP() || !var.isNoneMissing()) continue; 
+    assert(var.ploidy()==2); // make sure it is diploidy
     for(int i = 0; i < gt.size() / 2; i++) 
         hetsum[i] += abs(gt[2 * i + 0] - gt[2 * i + 1]);
 }
@@ -86,7 +77,7 @@ Stats like working with R. Rcpp can interact R and C++ seamlessly.
 using namespace Rcpp;
 using namespace std;
 // [[Rcpp::export]]
-List genotype_list(const string & vcffile) {
+List genotype_list(string vcffile) {
     vcfpp::BcfReader vcf(vcffile);
     vcfpp::BcfRecord var(vcf.header);
     vector<vector<int>> G;
@@ -102,6 +93,7 @@ List genotype_list(const string & vcffile) {
 #+caption: Here is the R code
 #+attr_latex: :options captionpos=t
 #+begin_src R
+library(Rcpp)
 sourceCpp("vcfpp-r.cpp")
 gts <- genotype_list("vcf.gz")
 #+end_src

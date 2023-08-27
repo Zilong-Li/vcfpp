@@ -1,5 +1,8 @@
 #+title: News and Changes
-
+* v0.1.5
+- support multiplodiy
+- handl genotype missingness. =-9= represents missing value.
+- update API =setGenotypes=
 * v0.1.4
 - add updateGenotypes, setAlleleStr
 - update clang format

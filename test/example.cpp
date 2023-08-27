@@ -12,13 +12,16 @@ TEST_CASE("Calculate the heterozygosity rate", "[bcf-reader]")
                   "-", "chr22:19000000-20000000");
     BcfRecord var(vcf.header); // construct a variant record
     vector<char> gt; // genotype can be of bool, char or int type
-    vector<int> hetsum(vcf.nsamples);
+    vector<int> hetsum(vcf.nsamples, 0);
     while(vcf.getNextVariant(var))
     {
         if(!var.isSNP()) continue; // skip other type of variants
         var.getGenotypes(gt);
-        for(int i = 0; i < gt.size() / var.nploidy; i++)
-            hetsum[i] += abs(gt[var.nploidy * i + 0] - gt[var.nploidy * i + 1]);
+        // analyze SNP variant with no genotype missingness
+        if (!var.isSNP() || !var.isNoneMissing()) continue; 
+        assert(var.ploidy()==2); // make sure it is diploidy
+        for(int i = 0; i < gt.size() / 2; i++) 
+            hetsum[i] += abs(gt[2 * i + 0] - gt[2 * i + 1]);
     }
     for (auto i : hetsum) { cout << i << endl; }
 }
