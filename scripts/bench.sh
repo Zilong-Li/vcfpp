@@ -13,10 +13,15 @@ wget -N -r --no-parent --no-directories https://ftp.1000genomes.ebi.ac.uk/vol1/f
 # big vcf file with very long INFO field
 vcffile="1kGP_high_coverage_Illumina.chr21.filtered.SNV_INDEL_SV_phased_panel.vcf.gz"
 
-$gtime -vvv Rscript test-vcfR.R $vcffile &> test-vcfR.llog1 &
-$gtime -vvv Rscript test-vcfpp.R $vcffile &> test-vcfpp.llog1 &
-$gtime -vvv Rscript test-fread.R $vcffile &> test-fread.llog1 &
+$gtime -vvv Rscript test-fread.R $vcffile &> test-fread.llog.1 &
+$gtime -vvv Rscript test-vcfR.R $vcffile 1 &> test-vcfR.llog.1 &
+$gtime -vvv Rscript test-vcfpp.R $vcffile 1 &> test-vcfpp.llog.1 &
+$gtime -vvv Rscript test-vcfR.R $vcffile 2 &> test-vcfR.llog.2 &
+$gtime -vvv Rscript test-vcfpp.R $vcffile 2 &> test-vcfpp.llog.2 &
 wait
+
+echo "jobs done. god day"
+exit
 
 # small vcf file with no INFO field
 vcffile2="small."$vcffile

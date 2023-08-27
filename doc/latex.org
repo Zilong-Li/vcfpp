@@ -1,0 +1,13 @@
+#+latex_class: minipaper
+#+latex_header: \usepackage{xcolor}
+#+latex_header: \usepackage{listings}
+#+latex_header: \usepackage{caption}
+#+latex_header: \usepackage{calc}
+#+latex_header: \usepackage{float}
+#+latex_header: \DeclareCaptionFont{white}{\color{white}}
+#+latex_header: \DeclareCaptionFormat{listing}{\parbox{\textwidth}{\colorbox{gray}{\parbox{\textwidth}{#1#2#3}}\vskip-4pt}}
+#+latex_header: \captionsetup[lstlisting]{format=listing,labelfont=white,textfont=white}
+#+latex_header: \newlength\tdima \newlength\tdimb \setlength\tdima{ \fboxsep+\fboxrule} \setlength\tdimb{-\fboxsep+\fboxrule}
+#+latex_header: \lstset{frame=tlrb,xleftmargin=\tdima,xrightmargin=\tdimb, rulecolor=\color{gray}}
+#+latex_header: \bibliographystyle{bibliography}
+# #+latex_header: \addbibresource{ref.bib}
