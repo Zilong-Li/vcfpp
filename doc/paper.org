@@ -11,25 +11,26 @@ Email: zilong.dk@gamil.com.}}
 \begin{titlepage} \maketitle
   Given the complexity and popularity of the VCF/BCF format as well as
   ever-growing data size, there is always a need for fast and flexible
-  methods to manipulate it in different languages. Static languages
-  like C++ has the superiority of performance as C, and its modern
-  version strives to provide highly easy to use API for fast
-  developing program. In this work, we present vcfpp, a C++ API of
-  htslib, providing a rapid and intuitive interface to manipulate
-  VCF/BCF files safely and as easily as writing python script. We
-  demonstrate an example of how minimal vcfpp code can read/write
-  variant records easily. Additionally, we demonstrate how vcfpp can
-  be useful to Statisticians analyzing genetic variants in R. In the
-  benchmarking, a simple R script using vcfpp API shows lower memory
-  footprint and shorter runtime than scripts using vcfR and
-  cyvcf2. Command line tools using vcfpp are available for
-  performaning PBWT-based analysis using large reference panel.
+  methods to manipulate it in different programming languages. Static
+  languages like C++ has the superiority of performance as C, and its
+  modern standards strive to provide enlarged standard library for
+  developing program quickly and easily. In this work, we present
+  vcfpp, a C++ API of htslib, providing a rapid and intuitive
+  interface to manipulate VCF/BCF files safely and as easily as
+  writing python script. We demonstrate an example of how minimal
+  vcfpp code can read/write variant records rapidly. Additionally, we
+  demonstrate how vcfpp can be useful to Statisticians analyzing
+  genetic variants in R. In the benchmarking, a simple R script using
+  vcfpp API shows lower memory footprint and fast speed than scripts
+  using vcfR and cyvcf2. Command line tool using vcfpp is available
+  for performaning PBWT-based analysis using large-scale reference
+  panel stored in compressed BCF format.
 \end{titlepage}
 #+end_export
 
 * Introduction
 
-The VCF format (Danecek et al., 2011) is the standard for
+The VCF format [cite:@danecek2011] is the standard for
 representing genetic variation observed in DNA sequencing
 studies. The strength of the VCF format is its ability to represent
 the location of a variant, the genotype of the sequenced
@@ -49,7 +50,9 @@ from VCF files.
 
 ** Features
 
-vcfpp implements four classes for manipulating VCF/BCF as showed in [[tb:class]]. 
+vcfpp is implemented as a single header file for being easily
+intergrated and compiled. There are four core classes for
+manipulating VCF/BCF as showed in [[tb:class]].
 
 #+caption: vcfpp capabilities and implemented C++ class
 #+name: tb:class
@@ -74,12 +77,12 @@ vcfpp::BcfReader vcf("bcf.gz", "id1,id2,id3", "chr21");
 vcfpp::BcfRecord var(vcf.header); 
 vector<char> gt; // genotype can be of bool, char or int type
 vector<int> hetsum(vcf.nsamples, 0); // store the het counts
-while (vcf.getNextVariant(var)) {
+while(vcf.getNextVariant(var)){
   var.getGenotypes(gt);
   if(!var.isSNP()||!var.isNoneMissing()||var.QUAL()<9) continue; 
   assert(var.ploidy()==2); // make sure it is diploidy
-  for(int i = 0; i < gt.size() / 2; i++) 
-    hetsum[i] += abs(gt[2 * i + 0] - gt[2 * i + 1]);
+  for(int i=0; i<gt.size()/2; i++) 
+    hetsum[i] += abs(gt[2*i+0] - gt[2*i+1]);
 }
 #+end_src
 
@@ -123,28 +126,26 @@ gts <- genotypes("vcf.gz")
 
 vcfR [cite:@brian2017] is an R package that provides function to parse vcf into data tables in R.
 
-#+caption: Performance of counting heterozygous genotypes per sample in the 1000 Genome Project for chromosome 21. (*) RAM used by sourceCpp function.
-#+attr_latex: :align lrrrr :placement [H]
+#+caption: Performance of counting heterozygous genotypes per sample in the 1000 Genome Project for chromosome 21. (*) used by /sourceCpp/ function.
+#+attr_latex: :align lllll :placement [H]
 |------------------+----------+-------+-------------|
 | API              | Time (s) | Ratio |    RAM (Gb) |
 |------------------+----------+-------+-------------|
-| vcfpp::BcfReader |      118 |   1.0 | 0.071+0.28* |
+| vcfpp::BcfReader |   115+3* |   1.0 | 0.071+0.28* |
 | cyvcf2.VCF       |      209 |   1.8 |       0.035 |
 | vcfR::read.vcfR  |     7207 |  61.1 |          97 |
 |------------------+----------+-------+-------------|
 
 #+caption: Performance of converting the gzipped VCF of 1000 Genome Project into data tables of R for chromosome 21.
-#+attr_latex: :align lrrrr :placement [H]
+#+attr_latex: :align lllll :placement [H]
 |-------------------+----------+-------+----------|
 | API               | Time (s) | Ratio | RAM (Gb) |
 |-------------------+----------+-------+----------|
-| vcfpp::BcfReader  |      219 |   1.0 |       25 |
+| vcfpp::BcfReader  |      218 |   1.0 |       25 |
 | vcfR::read.vcfR   |      577 |   2.6 |       48 |
 | data.table::fread |      155 |   0.7 |       38 |
 |-------------------+----------+-------+----------|
 
-
-* Reference
 
 #+print_bibliography:
 

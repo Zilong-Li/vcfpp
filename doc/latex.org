@@ -9,5 +9,5 @@
 #+latex_header: \captionsetup[lstlisting]{format=listing,labelfont=white,textfont=white}
 #+latex_header: \newlength\tdima \newlength\tdimb \setlength\tdima{ \fboxsep+\fboxrule} \setlength\tdimb{-\fboxsep+\fboxrule}
 #+latex_header: \lstset{frame=tlrb,xleftmargin=\tdima,xrightmargin=\tdimb, rulecolor=\color{gray}}
-#+latex_header: \bibliographystyle{bibliography}
-# #+latex_header: \addbibresource{ref.bib}
+#+latex_header: \usepackage[backend=biber,style=authoryear-comp,date=year,sorting=nyt,sortlocale=auto,maxcitenames=1,maxbibnames=10,uniquename=init,maxitems=1,giveninits=true,terseinits=true,dashed=false,doi=true,isbn=false,url=false] {biblatex}
+#+latex_header: \addbibresource{ref.bib}
