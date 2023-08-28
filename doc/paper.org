@@ -30,25 +30,18 @@ Email: zilong.dk@gamil.com.}}
 
 * Introduction
 
-The VCF format [cite:@danecek2011] is the standard for
-representing genetic variation observed in DNA sequencing
-studies. The strength of the VCF format is its ability to represent
-the location of a variant, the genotype of the sequenced
-individual at each locus, as well as extensive variant
-metadata. Furthermore, the VCF format provided a substantial advance
-for the research community, as it follows a rigorous format
-specification that enables direct comparison of results from
-multiple studies and facilitates reproducible research. However, the
-consequence of this flexibility and the rather complicated
-specification of the VCF format, is that researchers require
-powerful software libraries to access, query and manipulate variants
-from VCF files.
+The VCF format [cite:@danecek2011] is the standard for representing
+genetic variation observed in DNA sequencing studies. The strength
+of the VCF format is its ability to represent the location of a
+variant, the genotype of the sequenced individual at each locus, as
+well as extensive variant metadata. However, the consequence of this
+flexibility and the rather complicated specification of the VCF
+format, is that researchers require powerful software libraries to
+access, query and manipulate variants from VCF files. Many efforts from computaional biologists 
 
 \newpage
 
-* Results
-
-** Features
+* Features 
 
 vcfpp is implemented as a single header file for being easily
 intergrated and compiled. There are four core classes for
@@ -64,6 +57,13 @@ manipulating VCF/BCF as showed in [[tb:class]].
 | VCF/BCF variants and operations | BcfRecord |
 | VCF/BCF header and operations   | BcfHeader |
 |---------------------------------+-----------|
+
+* Usage
+
+In an effort to demonstrate the power and performance of vcfpp, the
+following sections highlight typical VCF analyses and illustrate
+commonly used features in cyvcf2. Other examples and further details
+of the vcfpp can be found at https://github.com/Zilong-Li/vcfpp.
 
 ** Python-like API
 
@@ -122,7 +122,7 @@ sourceCpp("vcfpp-r.cpp")
 gts <- genotypes("vcf.gz")
 #+end_src
 
-** Benchmarking
+* Benchmarking
 
 vcfR [cite:@brian2017] is an R package that provides function to parse vcf into data tables in R.
 
@@ -146,6 +146,13 @@ vcfR [cite:@brian2017] is an R package that provides function to parse vcf into 
 | data.table::fread |      155 |   0.7 |       38 |
 |-------------------+----------+-------+----------|
 
+
+* Discussion
+
+We have developed vcfpp, a fast and flexible C++ API for scripting
+high-perfomance genetic variant analyses. Its easy-to-use can be
+very useful for both package developers and writing of daily used
+scripts.
 
 #+print_bibliography:
 

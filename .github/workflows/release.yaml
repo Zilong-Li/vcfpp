@@ -1,0 +1,46 @@
+---
+name: 'tagged-release'
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  tagged-release:
+    name: 'tagged-release'
+    runs-on: 'ubuntu-latest'
+    env:
+      JEST_VERBOSE: ${{ secrets.JEST_VERBOSE }}
+
+    steps:
+      - name: 'Checkout source code'
+        uses: 'actions/checkout@v3'
+        with:
+          submodules: recursive
+
+      - name: 'install dependency'
+        run: |
+          sudo apt update
+          sudo apt-get update
+          sudo apt-get -qy install build-essential zlib1g zlib1g-dev curl libcurl4-openssl-dev lzma-dev liblzma-dev libeigen3-dev
+          git clone --recursive https://github.com/samtools/htslib.git
+          cd htslib && autoreconf -i && ./configure --enable-libcurl
+          sudo make -j 4 install
+          sudo ldconfig
+          cd -
+
+      - name: 'run tests'
+        run: |
+          cd test
+          make
+          make test
+
+      - uses: 'marvinpinto/action-automatic-releases@latest'
+        with:
+          repo_token: '${{ secrets.GITHUB_TOKEN }}'
+          prerelease: false
+          files: |
+            vcfpp.h
+        id: 'automatic_releases'
+
