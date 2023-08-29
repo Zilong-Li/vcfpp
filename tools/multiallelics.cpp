@@ -39,7 +39,7 @@ int main(int argc, char* argv[])
             region = args[++i];
     }
     // ========= core calculation part ===========================================
-    BcfReader vcf(invcf, samples, region);
+    BcfReader vcf(invcf, region, samples);
     BcfRecord var(vcf.header);
     BcfWriter bw(outvcf, vcf.header);
     while (vcf.getNextVariant(var))

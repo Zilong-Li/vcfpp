@@ -1,4 +1,8 @@
 #+title: News and Changes
+
+* v0.1.6
+- BcfReader API break change
+- add setRegionIndex
 * v0.1.5
 - support multiplodiy
 - handl genotype missingness. =-9= represents missing value.

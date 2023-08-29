@@ -2,7 +2,7 @@
  * @file        https://github.com/Zilong-Li/vcfpp/vcfpp.h
  * @author      Zilong Li
  * @email       zilong.dk@gmail.com
- * @version     v0.1.5
+ * @version     v0.1.6
  * @breif       a single C++ file for manipulating VCF
  * Copyright (C) 2022-2023.The use of this code is governed by the LICENSE file.
  ******************************************************************************/
@@ -1091,31 +1091,26 @@ class BcfReader
     /**
      *  @brief construct a vcf/bcf reader with subset samples
      *  @param file   the input vcf/bcf with suffix vcf(.gz)/bcf(.gz) or stdin "-"
-     *  @param samples  LIST samples to include or exclude as a comma-separated string. \n
-     *                  LIST : select samples in list \n
-     *                  ^LIST : exclude samples from list \n
-     *                  "-" : include all samples \n
-     *                  "" : exclude all samples
+     *  @param region samtools-like region "chr:start-end", skip if empty
      */
-    BcfReader(const std::string & file, const std::string & samples) : fname(file)
+    BcfReader(const std::string & file, const std::string & region) : fname(file)
     {
         open(file);
-        header.setSamples(samples);
-        nsamples = bcf_hdr_nsamples(header.hdr);
+        if(!region.empty()) setRegion(region);
         SamplesName = header.getSamples();
     }
 
     /**
      *  @brief construct a vcf/bcf reader with subset samples in target region
      *  @param file   the input vcf/bcf with suffix vcf(.gz) or bcf(.gz)
+     *  @param region samtools-like region "chr:start-end", skip if empty
      *  @param samples  LIST samples to include or exclude as a comma-separated string. \n
      *                  LIST : select samples in list \n
      *                  ^LIST : exclude samples from list \n
      *                  "-" : include all samples \n
      *                  "" : exclude all samples
-     *  @param region samtools-like region "chr:start-end", skip if empty
      */
-    BcfReader(const std::string & file, const std::string & samples, const std::string & region) : fname(file)
+    BcfReader(const std::string & file, const std::string & region, const std::string & samples) : fname(file)
     {
         open(file);
         header.setSamples(samples);
@@ -1168,8 +1163,8 @@ class BcfReader
         return hts_set_threads(fp, n);
     }
 
-    /** @brief get records of current contig to use */
-    uint64_t get_region_records(const std::string & region)
+    /** @brief get the number of records of given region from index file */
+    uint64_t getRegionIndex(const std::string & region)
     {
         setRegion(region); // only one chromosome
         int tid = 0, ret = 0, nseq = 0;
