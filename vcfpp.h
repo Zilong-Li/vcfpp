@@ -2,7 +2,7 @@
  * @file        https://github.com/Zilong-Li/vcfpp/vcfpp.h
  * @author      Zilong Li
  * @email       zilong.dk@gmail.com
- * @version     v0.1.6
+ * @version     v0.1.7
  * @breif       a single C++ file for manipulating VCF
  * Copyright (C) 2022-2023.The use of this code is governed by the LICENSE file.
  ******************************************************************************/
@@ -47,6 +47,7 @@
 // make sure you have htslib installed
 extern "C"
 {
+#    include <htslib/kstring.h>
 #    include <htslib/tbx.h>
 #    include <htslib/vcf.h>
 #    include <htslib/vcfutils.h>
@@ -121,6 +122,27 @@ inline bool isEndWith(std::string const & s, std::string const & e)
     {
         return false;
     }
+}
+
+// string split by separator
+inline std::vector<std::string> split_string(const std::string & s, const std::string & separators)
+{
+    std::vector<std::string> ret;
+    bool is_seperator[256] = {false};
+    for(auto & ch : separators)
+    {
+        is_seperator[(unsigned int)ch] = true;
+    }
+    int begin = 0;
+    for(int i = 0; i <= (int)s.size(); i++)
+    {
+        if(is_seperator[(uint8_t)s[i]] || i == (int)s.size())
+        {
+            ret.push_back(std::string(s.begin() + begin, s.begin() + i));
+            begin = i + 1;
+        }
+    }
+    return ret;
 }
 
 /**
@@ -1003,12 +1025,77 @@ type as noted in the other overloading function.
         }
     }
 
-    /** @brief return raw INFO column as string */
+    /** @brief return raw INFO column as string. recommend to use getINFO for specific tag. */
     inline std::string INFO()
     {
-        std::string s;
-        auto info = line->d.info;
-        return s;
+        int32_t max_dt_id = header.hdr->n[BCF_DT_ID];
+        kstring_t * s = (kstring_t *)calloc(1, sizeof(kstring_t));
+        if(line->n_info)
+        {
+            int first = 1;
+            for(int i = 0; i < line->n_info; ++i)
+            {
+                bcf_info_t * z = &line->d.info[i];
+                if(!z->vptr) continue;
+                if(!first) kputc(';', s);
+                first = 0;
+                if(z->key < 0 || z->key >= max_dt_id || header.hdr->id[BCF_DT_ID][z->key].key == NULL)
+                    throw std::runtime_error("Invalid BCF and wrong INFO tag");
+                kputs(header.hdr->id[BCF_DT_ID][z->key].key, s);
+                if(z->len <= 0) continue;
+                kputc('=', s);
+                if(z->len == 1)
+                {
+                    switch(z->type)
+                    {
+                        case BCF_BT_INT8:
+                            if(z->v1.i == bcf_int8_missing)
+                                kputc('.', s);
+                            else
+                                kputw(z->v1.i, s);
+                            break;
+                        case BCF_BT_INT16:
+                            if(z->v1.i == bcf_int16_missing)
+                                kputc('.', s);
+                            else
+                                kputw(z->v1.i, s);
+                            break;
+                        case BCF_BT_INT32:
+                            if(z->v1.i == bcf_int32_missing)
+                                kputc('.', s);
+                            else
+                                kputw(z->v1.i, s);
+                            break;
+                        case BCF_BT_INT64:
+                            if(z->v1.i == bcf_int64_missing)
+                                kputc('.', s);
+                            else
+                                kputll(z->v1.i, s);
+                            break;
+                        case BCF_BT_FLOAT:
+                            if(bcf_float_is_missing(z->v1.f))
+                                kputc('.', s);
+                            else
+                                kputd(z->v1.f, s);
+                            break;
+                        case BCF_BT_CHAR:
+                            kputc(z->v1.i, s);
+                            break;
+                        default:
+                            throw std::runtime_error("Unexpected type in INFO");
+                    }
+                }
+                else
+                    bcf_fmt_array(s, z->len, z->type, z->vptr);
+            }
+            if(first) kputc('.', s);
+        }
+        else
+            kputc('.', s);
+        std::string out = std::string(s->s, s->l);
+        free(s->s);
+        free(s);
+        return out;
     }
 
     /** @brief return boolean value indicates if genotypes of all samples are phased */

@@ -8,8 +8,7 @@ vcffile <- args[1]
 run <- as.integer(args[2])
 
 if (run==1) {
-  system.time(gt <- genotypes(vcffile))
-  system.time(info <- varinfos(vcffile, length(gt)))
+  system.time(vcf <- readtable(vcffile, "chr21"))
 }
 
 if(run == 2) {

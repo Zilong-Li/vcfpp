@@ -1,5 +1,8 @@
 #+title: News and Changes
 
+* v0.1.7
+- add split_string
+- add INFO()
 * v0.1.6
 - BcfReader API break change
 - add setRegionIndex

@@ -3,65 +3,42 @@
 using namespace Rcpp;
 using namespace std;
 
-List genotypes_bool(const string & vcffile)
+// [[Rcpp::export]]
+int getRegionIndex(const string & vcffile, const std::string & region)
 {
     vcfpp::BcfReader vcf(vcffile);
-    vcfpp::BcfRecord var(vcf.header);
-    vector<vector<bool>> G;
-    vector<bool> gt;
-    while(vcf.getNextVariant(var))
-    {
-        var.getGenotypes(gt);
-        G.push_back(gt);
-    }
-    return wrap(G);
-}
-
-List genotypes_int(const string & vcffile)
-{
-    vcfpp::BcfReader vcf(vcffile);
-    vcfpp::BcfRecord var(vcf.header);
-    vector<vector<int>> G;
-    vector<int> gt;
-    while(vcf.getNextVariant(var))
-    {
-        var.getGenotypes(gt);
-        G.push_back(gt);
-    }
-    return wrap(G);
+    return vcf.getRegionIndex(region);
 }
 
 // [[Rcpp::export]]
-List genotypes(const string & vcffile, bool use_bool = true)
-{
-    if(use_bool)
-        return genotypes_bool(vcffile);
-    else
-        return genotypes_int(vcffile);
-}
-
-// [[Rcpp::export]]
-List varinfos(const string & vcffile, int nsnps)
+List readtable(const string & vcffile,const std::string & region)
 {
     vcfpp::BcfReader vcf(vcffile);
     vcfpp::BcfRecord var(vcf.header);
-    CharacterVector chr(nsnps), ref(nsnps), alt(nsnps), id(nsnps), filter(nsnps);
+    int nsnps = vcf.getRegionIndex(region);
+    CharacterVector chr(nsnps), ref(nsnps), alt(nsnps), id(nsnps), filter(nsnps), info(nsnps);
     IntegerVector pos(nsnps);
     NumericVector qual(nsnps);
+    vector<vector<bool>> GT(nsnps);
+    vector<bool> gt;
     int i = 0;
     while(vcf.getNextVariant(var))
     {
-        chr(i) = var.CHROM();
+        var.getGenotypes(gt);
+        GT[i] = gt;
         pos(i) = var.POS();
+        qual(i) = var.QUAL();
+        chr(i) = var.CHROM();
         id(i) = var.ID();
         ref(i) = var.REF();
         alt(i) = var.ALT();
-        qual(i) = var.QUAL();
         filter(i) = var.FILTER();
+        info(i) = var.INFO();
+
         i++;
     }
     return List::create(Named("chr") = chr, Named("pos") = pos, Named("id") = id, Named("ref") = ref,
-                        Named("alt") = alt, Named("qual") = qual, Named("filter") = filter);
+                        Named("alt") = alt, Named("qual") = qual, Named("filter") = filter, Named("gt") = GT);
 }
 
 // [[Rcpp::export]]
