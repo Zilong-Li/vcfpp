@@ -1,4 +1,3 @@
-library(Rcpp)
 library(stringr)
 library(vcfR)
 
@@ -9,10 +8,15 @@ run <- as.integer(args[2])
 
 system.time(vcf <- read.vcfR(vcffile))
 
-if(run == 2) {
-  gt <- extract.gt(vcf[is.biallelic(vcf),], element = 'GT')
+calc_hets1 <- function(gt) {
   hets <- apply(gt, 2, function(a) {
     o <- sapply(str_split(a, fixed("|")), as.numeric)
     sum(colSums(o)==1)
   })
+  hets
+}
+
+if(run == 2) {
+  gt <- extract.gt(vcf[is.biallelic(vcf),], element = 'GT')
+  system.time(hets<-calc_hets1(gt))
 }

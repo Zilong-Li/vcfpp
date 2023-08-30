@@ -11,7 +11,7 @@ int getRegionIndex(const string & vcffile, const std::string & region)
 }
 
 // [[Rcpp::export]]
-List readtable(const string & vcffile,const std::string & region)
+List readtable(const string & vcffile, const std::string & region)
 {
     vcfpp::BcfReader vcf(vcffile);
     vcfpp::BcfRecord var(vcf.header);
@@ -21,9 +21,9 @@ List readtable(const string & vcffile,const std::string & region)
     NumericVector qual(nsnps);
     vector<vector<bool>> GT(nsnps);
     vector<bool> gt;
-    int i = 0;
-    while(vcf.getNextVariant(var))
+    for(int i = 0; i < nsnps; i++)
     {
+        vcf.getNextVariant(var);
         var.getGenotypes(gt);
         GT[i] = gt;
         pos(i) = var.POS();
@@ -34,11 +34,10 @@ List readtable(const string & vcffile,const std::string & region)
         alt(i) = var.ALT();
         filter(i) = var.FILTER();
         info(i) = var.INFO();
-
-        i++;
     }
     return List::create(Named("chr") = chr, Named("pos") = pos, Named("id") = id, Named("ref") = ref,
-                        Named("alt") = alt, Named("qual") = qual, Named("filter") = filter, Named("gt") = GT);
+                        Named("alt") = alt, Named("qual") = qual, Named("filter") = filter,
+                        Named("info") = info, Named("gt") = GT);
 }
 
 // [[Rcpp::export]]
