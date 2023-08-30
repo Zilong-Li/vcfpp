@@ -19,23 +19,32 @@ Features:
 * Table of Contents :TOC:QUOTE:
 #+BEGIN_QUOTE
 - [[#installation][Installation]]
-- [[#examples][Examples]]
+- [[#usage][Usage]]
   - [[#reading-vcf][Reading VCF]]
+  - [[#genotype-values][Genotype values]]
   - [[#writing-vcf][Writing VCF]]
-- [[#tools][Tools]]
+  - [[#variants-operation][Variants Operation]]
+  - [[#header-operation][Header Operation]]
+- [[#rcpp-examples][Rcpp Examples]]
+- [[#command-line-tools][Command Line Tools]]
 #+END_QUOTE
 
 * Installation
-- download the released [[https://github.com/Zilong-Li/vcfpp/releases/latest][vcfpp.h]] and include it in your program.
-- make sure you have https://github.com/samtools/htslib installed on your system and the it is in your environment.
 
-* Examples
+1. install [[https://github.com/samtools/htslib][htslib]] on your system
+2. download the released [[https://github.com/Zilong-Li/vcfpp/releases/latest][vcfpp.h]]
+3. put =vcfpp.h= in the same folder as your cpp source file or a folder say =/my/writable/path/= or the system path
+ 
+* Usage
 
-You can copy paste the example code into a =example.cpp= file and compile it by =g++ example.cpp -std=c++11 -O3 -Wall -I. -lhts -lz -lm -lbz2 -llzma -lcurl=
+The documentation of API is [[https://zilongli.org/proj/vcfpp/index.html][here.]]
 
 ** Reading VCF
 
-In this example, we count the number of heterozygous sites for each sample in all records. The core is *just 10 lines*.
+In this example, we count the number of heterozygous genotypes for each
+sample in all records. You can paste the example code into a
+=example.cpp= file and compile it by =g++ example.cpp -std=c++11 -O3 -Wall -I. -lhts=.
+You can replace =-I.= with =-I/my/writable/path/= if you put =vcfpp.h= there.
 
 #+begin_src C++
 #include "vcfpp.h"
@@ -44,13 +53,12 @@ using namespace vcfpp;
 int main(int argc, char* argv[])
 {
     // read data from 1000 genomes server
-    BcfReader vcf("http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000G_2504_high_coverage/working/20220422_3202_phased_SNV_INDEL_SV/1kGP_high_coverage_Illumina.chr22.filtered.SNV_INDEL_SV_phased_panel.vcf.gz");
+    BcfReader vcf("https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000G_2504_high_coverage/working/20220422_3202_phased_SNV_INDEL_SV/1kGP_high_coverage_Illumina.chr21.filtered.SNV_INDEL_SV_phased_panel.vcf.gz");
     BcfRecord var(vcf.header); // construct a variant record
-    vector<char> gt; // genotype can be of bool, char or int type
+    vector<char> gt; // genotype can be bool, char or int type
     vector<int> hetsum(vcf.nsamples, 0);
     while (vcf.getNextVariant(var)) {
         var.getGenotypes(gt);
-        // analyze SNP variant with no genotype missingness
         if (!var.isSNP() || !var.isNoneMissing()) continue; 
         assert(var.ploidy()==2); // make sure it is diploidy
         for(int i = 0; i < gt.size() / 2; i++) 
@@ -61,35 +69,93 @@ int main(int argc, char* argv[])
 }
 #+end_src
 
+** Genotype values
+*** Code genotypes with missing allele as heterozygous.
+
+If you use =vector<bool>= and =vector<char>= to store the genotypes, then
+there is no way to represent missing values. Hence the returned
+genotypes always have 0s and 1s. And genotypes with missing allele
+(eg. =0/.=, =./0=, =1/.=, =./1=, =./.=) are codes as =1/0=.
+
+*** Code missing allele as -9
+
+If you use =vector<int>= to store the genotypes, then any missing allele
+will be coded as =-9=, following the design of PLINK.
+
 ** Writing VCF
 
-In this example, we read vcf and keep variants with allele freqency AF > 0.05. Meanwhile, we output a new BCF file.
+There are many ways in vcfpp for writing the VCF/BCF file.
+
+*** Use an empty template
+
+Here we construct an initial BCF with header using VCF4.3
+specification. Next we add meta data in the header and write out
+variant record given a string.
 
 #+begin_src C++
-#include "vcfpp.h"
-using namespace std;
-using namespace vcfpp;
-int main(int argc, char* argv[]) {
-    // read data from 1000 genomes server
-    BcfReader vcf("http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000G_2504_high_coverage/working/20220422_3202_phased_SNV_INDEL_SV/1kGP_high_coverage_Illumina.chr22.filtered.SNV_INDEL_SV_phased_panel.vcf.gz");
-    BcfRecord var(vcf.header); // construct a variant record
-    BcfWriter bw("out.bcf", vcf.header); // construct a vcf writer using same vcf header
-    vector<char> gt; // genotype can be of bool, char or int type
-    while (vcf.getNextVariant(var)) {
-        if (!var.isSNP()) continue; // skip other type of variants
-        var.getGenotypes(gt);
-        int ac = 0;
-        for(auto g : gt) ac += g;
-        if((double)ac / gt.size() > 0.05) continue;
-        bw.writeRecord(var);
-    }
-    return 0;
-}
+BcfWriter bw("out.bcf.gz", "VCF4.3");
+bw.header.addFORMAT("GT", "1", "String", "Genotype");
+bw.header.addINFO("AF", "A", "Float", "Estimated allele frequency in the range (0,1)");
+bw.header.addContig("chr20"); // add chromosome
+for (auto& s : {"id01", "id02", "id03"}) bw.header.addSample(s); // add 3 samples
+bw.writeLine("chr20\t2006060\trs146931526\tG\tC\t100\tPASS\tAF=0.000998403\tGT\t1|0\t1|1\t0|0");
 #+end_src
 
-** Genotypes
+*** Use another VCF as template
 
+In this example, we first read VCF file
+=test/test-vcf-read.vcf.gz=. Secondly, we construct an empty variant record
+and update the record with the input VCF. Thirdly, we construct a
+BcfWriter object using the meta data in the header of the input VCF,
+writing out the header and the modified variant record.
 
-* Tools
+#+begin_src C++
+BcfReader br("test/test-vcf-read.vcf.gz");
+BcfRecord var(br.header);
+br.getNextVariant(var);
+BcfWriter bw("out.vcf.gz", br.header);
+bw.writeHeader();
+var.setPOS(100001); // update the POS of the variant
+bw.writeRecord(var);
+#+end_src
 
-Find more useful algorithms/tools with VCF/BCF input in [[tools]]
+** Variants Operation
+
+All variants related API can be found [[https://zilongli.org/proj/vcfpp/classvcfpp_1_1_bcf_record][BcfRecord]]. The commonly used are listed below.
+
+#+begin_src C++
+BcfReader vcf("bcf.gz"); // construct a vcf reader
+BcfRecord var(vcf.header); // construct an empty variant record associated with vcf header
+vcf.getNextVariant(var) // get next variant
+vector<char> gt; // genotype can be bool, char or int type
+var.getGenotypes(gt), var.setGenotypes(gt); // get or set genotypes for current variant
+var.isNoneMissing(); // check if there is missing value after getting genotypes
+vector<int> gq; // genotype quality usually is of int type
+var.getFORMAT("GQ",gq), var.setFORMAT("GQ",gq); // get or set a vector of genotypes quality 
+vector<int> pl; // Phred-scaled genotype likelihoods usually is of int type
+var.getFORMAT("PL",pl); // get a vector of Phred-scaled genotype likelihoods
+float af;
+var.getINFO("AF", af), var.setINFO("AF", af); // get or set AF (allele frequency) value in INFO
+int mq;
+var.getINFO("MQ",mq) // get MQ (Average mapping quality) value from INFO
+vector<int> dp4; // Number of high-quality ref-forward , ref-reverse, alt-forward and alt-reverse bases
+var.getINFO("DP4", dp4), var.setINFO("DP4", dp4); // get or set a vector of dp4 value from INFO
+var.isSNP(); // check if variant is SNP
+var.isSV(); // check if variant is SV
+var.isIndel(); // check if variant is indel
+var.isMultiAllelic(); // check if variant is MultiAllelic
+var.POS(), var.setPOS(); // get POS or modify POS
+#+end_src
+
+** Header Operation
+
+All variants related API can be found in [[https://zilongli.org/proj/vcfpp/classvcfpp_1_1_bcf_header][BcfHeader]].
+
+* Rcpp Examples
+
+Example functions using Rcpp are in folder [[Rcpp]].
+
+* Command Line Tools
+
+Find more useful command line tools in folder [[tools]].
+

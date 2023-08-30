@@ -20,8 +20,6 @@ vcffile="1kGP_high_coverage_Illumina.chr21.filtered.SNV_INDEL_SV_phased_panel.vc
 # do the benchmarking in same conda env
 
 $gtime -vvv Rscript test-fread.R $vcffile &> test-fread.llog.1 &
-$gtime -vvv Rscript test-vcfR.R $vcffile 1 &> test-vcfR.llog.1 &
-$gtime -vvv Rscript test-vcfR.R $vcffile 2 &> test-vcfR.llog.2 &
 $gtime -vvv Rscript test-vcfpp-1.R $vcffile &> test-vcfpp.llog.1 &
 $gtime -vvv Rscript test-vcfpp-2.R $vcffile &> test-vcfpp.llog.2 &
 $gtime -vvv python test-cyvcf2.py $vcffile &> test-cyvcf2.llog &
