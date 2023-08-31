@@ -4,7 +4,7 @@ using namespace Rcpp;
 using namespace std;
 
 // [[Rcpp::export]]
-List table.GT(const string & vcffile, const std::string & region, std::string samples="-")
+List tableGT(std::string vcffile, std::string region, std::string samples="-")
 {
     vcfpp::BcfReader vcf(vcffile, samples);
     vcfpp::BcfRecord var(vcf.header);
@@ -34,7 +34,7 @@ List table.GT(const string & vcffile, const std::string & region, std::string sa
 }
 
 // [[Rcpp::export]]
-List table.GL(const string & vcffile, const std::string & region, std::string samples="-")
+List tableGL(std::string vcffile, std::string region, std::string samples = "-")
 {
     vcfpp::BcfReader vcf(vcffile, samples);
     vcfpp::BcfRecord var(vcf.header);

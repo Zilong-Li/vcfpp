@@ -1,0 +1,43 @@
+#+title: How to use vcfpp in R
+#+author: Zilong Li
+#+language: en
+
+* Build R package
+
+If you want to build a R package using vcfpp, here are the steps:
+
+- download [[https://github.com/Zilong-Li/vcfpp/releases/latest][vcfpp.h]] and [[https://github.com/samtools/htslib][htslib]] in =src= folder.
+- create an =Makevars= file in =src= folder with
+  #+begin_src R
+  PKG_CPPFLAGS = -I. -Ihtslib/
+  PKG_LIBS = $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) htslib/libhts.a -fPIC -lz -lbz2 -llzma -lcurl
+
+  .PHONY: all
+  all : $(SHLIB)
+  $(SHLIB) : HTSLIB
+
+  CC=$(shell "R CMD config CC")
+  CXX=$(shell "R CMD config CXX")
+  CPPFLAGS=$(shell "R CMD config CPPFLAGS")
+  LDFLAGS=$(shell "R CMD config LDFLAGS")
+
+  HTSLIB:
+      cd htslib && autoreconf -i && ./configure --with-libdeflate=no && $(MAKE) libhts.a CXX="$(CXX)" CC="$(CC)" CPPFLAGS="$(CPPFLAGS) -fPIC " && cd ..
+  #+end_src
+
+Check https://github.com/rwdavies/STITCH for an example.
+
+* Write R scripts
+
+If you don't want to build a R package, then you just need to install
+[[https://github.com/Zilong-Li/vcfpp/releases/latest][vcfpp.h]] and [[https://github.com/samtools/htslib][htslib]] in your R system enviroment. For example, assume
+you have a conda enviroment =~/mambaforge/envs/R=, the system
+envrionment are =~/mambaforge/envs/R/include= for header files and
+=~/mambaforge/envs/R/lib= for library file. Then you can compile and run
+functions from the =vcfpp-read.cpp= file in R by
+
+#+begin_src R
+library(Rcpp)
+Sys.setenv("PKG_LIBS"="-I~/mambaforge/envs/R/include -L~/mambaforge/envs/R/include -lhts")
+sourceCpp("vcfpp-read.cpp", verbose=TRUE, rebuild=TRUE)
+#+end_src
