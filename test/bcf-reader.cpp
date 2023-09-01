@@ -66,19 +66,62 @@ TEST_CASE("parse vcf with missing genotypes diploid - vector<int>", "[bcf-reader
 
 TEST_CASE("parse vcf with multialleles - vector<int>", "[bcf-reader]")
 {
-    BcfWriter bw("test-multialleles.vcf", "VCF4.3");
+    string vcffile{"test-multialleles.vcf.gz"};
+    BcfWriter bw(vcffile, "VCF4.2");
     bw.header.addContig("chr20"); 
-    bw.header.addFORMAT("GT", "2", "String", "Genotype");
     bw.header.addINFO("AF", "A", "Float", "Estimated allele frequency in the range (0,1)");
+    bw.header.addFORMAT("GT", "1", "String", "Genotype");
     for(auto & s : {"id01", "id02", "id03"}) bw.header.addSample(s); // add 3 samples
     bw.writeLine("chr20\t2006060\trs146931526\tG\tA,T\t100\tPASS\tAF=0.02\tGT\t1|2\t1|1\t0|2");
     bw.close();
-    BcfReader br("test-multialleles.vcf");
+    BcfReader br("test-multialleles.vcf.gz");
     BcfRecord var(br.header);
     vector<int> gt;
     while(br.getNextVariant(var))
     {
         var.getGenotypes(gt);
         for(auto g : gt) cout << g << endl;
+    }
+}
+
+TEST_CASE("parse PL in vcf - vector<int>", "[bcf-reader]")
+{
+    string vcffile{"test-GL.vcf.gz"};
+    BcfWriter bw(vcffile, "VCF4.2");
+    bw.header.addContig("chr20"); 
+    bw.header.addINFO("AF", "A", "Float", "Estimated allele frequency in the range (0,1)");
+    bw.header.addFORMAT("GT", "1", "String", "Genotype");
+    bw.header.addFORMAT("PL", "G", "Integer", "List of Phred-scaled genotype likelihoods");
+    for(auto & s : {"id01", "id02"}) bw.header.addSample(s); // add 3 samples
+    bw.writeLine("chr20\t2006060\trs146931526\tG\tA\t100\tPASS\tAF=0.02\tGT:PL\t0/0:0,9,75\t0/0:0,3,30");
+    bw.close();
+    BcfReader br(vcffile);
+    BcfRecord var(br.header);
+    vector<int> pl;
+    while(br.getNextVariant(var))
+    {
+        var.getFORMAT("PL",pl);
+        for(auto g : pl) cout << g << endl;
+    }
+}
+
+TEST_CASE("parse GL in vcf - vector<float>", "[bcf-reader]")
+{
+    string vcffile{"test-GL.vcf.gz"};
+    BcfWriter bw(vcffile, "VCF4.2");
+    bw.header.addContig("chr20"); 
+    bw.header.addINFO("AF", "A", "Float", "Estimated allele frequency in the range (0,1)");
+    bw.header.addFORMAT("GT", "1", "String", "Genotype");
+    bw.header.addFORMAT("GL", "G", "Float", "List of log scale genotype likelihoods");
+    for(auto & s : {"id01", "id02"}) bw.header.addSample(s); // add 3 samples
+    bw.writeLine("chr20\t2006060\trs146931526\tG\tA\t100\tPASS\tAF=0.02\tGT:GL\t0/1:-323.03,-99.29,-802.53\t1/1:-133.03,-299.29,-902.53");
+    bw.close();
+    BcfReader br(vcffile);
+    BcfRecord var(br.header);
+    vector<float> gl;
+    while(br.getNextVariant(var))
+    {
+        var.getFORMAT("GL",gl);
+        for(auto g : gl) cout << g << endl;
     }
 }

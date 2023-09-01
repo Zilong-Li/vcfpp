@@ -229,9 +229,9 @@ https://github.com/Zilong-Li/vcfpp/tree/main/tools.
 
 * Acknowledgments
 
-I would like to thank Anders Albrechtsen and Robert W Davies for
-helpful comments. Also, this project is largely inspired by open
-source projects SeqLib and cyvcf2.
+I would like to thank Anders Albrechtsen at Copenhagen University and
+Robert W Davies at Oxford University for helpful comments. Also, this
+project is inspired by open source projects SeqLib and cyvcf2.
 
 #+print_bibliography:
 

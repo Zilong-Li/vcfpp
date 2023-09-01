@@ -1,5 +1,9 @@
 #+title: News and Changes
 
+* v0.2.0
+- major release
+* v0.1.8
+- fix BcfWriter
 * v0.1.7
 - add split_string
 - add INFO()

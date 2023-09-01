@@ -21,11 +21,11 @@ Features:
 - [[#installation][Installation]]
 - [[#usage][Usage]]
   - [[#reading-vcf][Reading VCF]]
-  - [[#genotypes][Genotypes]]
+  - [[#genotypes-coding][Genotypes Coding]]
   - [[#writing-vcf][Writing VCF]]
   - [[#variants-operation][Variants Operation]]
   - [[#header-operation][Header Operation]]
-- [[#rcpp-examples][Rcpp Examples]]
+- [[#working-with-r][Working with R]]
 - [[#command-line-tools][Command Line Tools]]
 #+END_QUOTE
 
@@ -69,23 +69,26 @@ int main(int argc, char* argv[])
 }
 #+end_src
 
-** Genotypes
-There are 3 types used for genotypes, ie vector<bool>, vector<char>
-and vector<int>. One can use vector<bool> and vector<char> for
+** Genotypes Coding
+
+There are 3 types used for genotypes, ie. =vector<bool>=, =vector<char>= and =vector<int>=. One can use =vector<bool>= and =vector<char>= for
 memory-effcient goal. The downside is that it only stores 0 and 1. And
-vector<int> can store missing values and multialleles.
+=vector<int>= can store missing values and multialleles.
 
 *** Code genotypes with missing allele as heterozygous.
 
 If you use =vector<bool>= and =vector<char>= to store the genotypes, then
 there is no way to represent missing values. Hence the returned
 genotypes always have 0s and 1s. And genotypes with missing allele
-(eg. =0/.=, =./0=, =1/.=, =./1=, =./.=) are codes as =1/0=.
+(eg. =0/.=, =./0=, =1/.=, =./1=, =./.=) are codes as =1/0=. It's recommended to
+use =var.isNoneMissing()= to check if there is missing value.
 
 *** Code missing allele as -9
 
-If you use =vector<int>= to store the genotypes, then any missing allele
-will be coded as =-9=, following the design of PLINK.
+If this default behavior for =vector<bool>= and =vector<char>= is not what
+you want, you should use =vector<int>= to store the genotypes, then any
+missing allele will be coded as =-9=. *Note* you should take the missing
+value =-9= into account for downstream analysis.
 
 ** Writing VCF
 
@@ -156,9 +159,9 @@ var.POS(), var.setPOS(); // get POS or modify POS
 
 All variants related API can be found in [[https://zilongli.org/proj/vcfpp/classvcfpp_1_1_bcf_header][BcfHeader]].
 
-* Rcpp Examples
+* Working with R
 
-Example functions using Rcpp are in folder [[Rcpp]].
+Examples of vcfpp working with R are in folder [[Rcpp]] and https://github.com/Zilong-Li/vcfppR.
 
 * Command Line Tools
 
