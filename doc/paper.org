@@ -83,21 +83,21 @@ details of vcfpp can be found at https://github.com/Zilong-Li/vcfpp.
 
 ** C++ API
 
-In this example, we count the number of heterozygous sites for
-each sample in all records. The following code first includes a
-single vcfpp.h file (line 1), opens a compressed BCF file
-constrained to 3 samples and "chr21" region (line 2), and creates
-a variant record object associated with the header information in
-the BCF (line 3). Then it defines several types of objects to
-collect the results we want (line 4-6). Taking advantage of
-generic templates in C++, the type of field like genotype can be
-very flexible. Then it starts iterating over the BCF file and
-processes each variant record in the loop (line 7). We ignore
-variants of other types (INDEL, SV), or with missing genotypes, or
-with QUAL value smaller than 9, while we can also retrieve more
-information of the variant and do filtering (line 9-10). Finally,
-we count the heterozygous sites for each diploid sample (line
-11-13). The core is just 13 lines.
+In this example, we count the number of heterozygous sites for each
+sample in all records. The following code first includes a single
+vcfpp.h file (line 1), opens a compressed BCF file constrained to 3
+samples and region "chr21" (line 2), and creates a variant record
+associated with the header information in the file (line 3). Then it
+defines several types of objects to collect the results we want (line
+4-6). Taking advantage of generic templates in C++, the type of field
+like genotype can be very flexible regarding memory consumption. Then
+it starts iterating over the BCF file and processes each variant
+record in the loop (line 7). We ignore variants of other types (INDEL,
+SV), or with missing genotypes, or with /QUAL/ value smaller than 9,
+while we can also retrieve more information of the variant and do
+filtering (line 9-10). Finally, we count the number of heterozygous
+variant for each diploid sample (line 11-13). The core is just 13
+lines.
 
 #+caption: Counting the number of heterozygous genotypes for 3 samples on chr21
 #+attr_latex: :options captionpos=t
@@ -180,16 +180,16 @@ perform analysis later, I also write a function to load whole VCF
 content in R for such two-step comparison although it is not
 preferable for this task. Notably, the "test-vcfpp-2.R" script is
 only $1.9\times$ slower compared to $70\times$, $85\times$ slower
-for "test-vcfR.R" and "test-fread.R". This is because genotypes made
-by both vcfR and data.table::fread are characters, which are very
-slow to parse in R despite a faster string library was
-used. However, using vcfpp can get integer vectors directly in R for
-computation. Moreover, regarding the best practice of data analysis
-in R, we usually want to inspect part of the data table first to
-make further decisions. And vcfpp has the full functionalities of
-htslib that is supporting reading BCF, selecting samples and
-regions. A quick lookup of VCF content can be achieved by passing a
-region parameter.
+for "test-vcfR.R" and "test-fread.R" respectively. This is because
+genotypes made by both vcfR and data.table::fread are characters,
+which are very slow to parse in R despite a faster string library
+was used. In contrast, with vcfpp, integer vectors of genotypes can
+be returned to R directly for computation. Moreover, regarding the
+best practice of data analysis in R, we usually want to inspect part
+of the data table first to make further decisions. And vcfpp has the
+full functionalities of htslib that is supporting reading BCF,
+selecting samples and regions. A rapid query of VCF content can be
+achieved by passing a region parameter.
 
 #+caption: Performance of counting heterozygous genotypes per sample in the 1000 Genome Project for chromosome 21. (^) used by /sourceCpp/ function. (*) used by loading data in two-step strategy.
 #+name: tb:counthets
@@ -214,9 +214,9 @@ writing daily used scripts. Many existing packages written in C++
 using customized VCF parser can be replaced with vcfpp to offer more
 functionalities. For instance, imputation software STITCH
 [cite:@davies2016] and QUILT [cite:@davies2021] are using vcfpp to
-parse reference panel in VCF/BCF format. Also, we provide a modified
-Syllable-PBWT and some useful command line tools in
-https://github.com/Zilong-Li/vcfpp/tree/main/tools.
+parse large reference panel in VCF/BCF format. Also, there are some
+useful command line tools available, such as a modified
+Syllable-PBWT with compressed VCF/BCF as input.
 
 * Software and Code
 
@@ -224,14 +224,19 @@ The latest release of vcfpp.h can be downloaded from
 https://github.com/Zilong-Li/vcfpp/releases. Scripts for
 Benchmarking can be found here
 https://github.com/Zilong-Li/vcfpp/tree/main/scripts. More helpful
-example functions can be found here
-https://github.com/Zilong-Li/vcfpp/tree/main/tools.
+example functions can be found at
+https://github.com/Zilong-Li/vcfpp.
 
 * Acknowledgments
 
 I would like to thank Anders Albrechtsen at Copenhagen University and
 Robert W Davies at Oxford University for helpful comments. Also, this
 project is inspired by open source projects SeqLib and cyvcf2.
+
+* Funding
+
+This work is supported by the Novo Nordisk 462 Foundation
+(NNF20OC0061343).
 
 #+print_bibliography:
 
