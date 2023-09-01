@@ -21,7 +21,7 @@ Features:
 - [[#installation][Installation]]
 - [[#usage][Usage]]
   - [[#reading-vcf][Reading VCF]]
-  - [[#genotype-values][Genotype values]]
+  - [[#genotypes][Genotypes]]
   - [[#writing-vcf][Writing VCF]]
   - [[#variants-operation][Variants Operation]]
   - [[#header-operation][Header Operation]]
@@ -69,7 +69,12 @@ int main(int argc, char* argv[])
 }
 #+end_src
 
-** Genotype values
+** Genotypes
+There are 3 types used for genotypes, ie vector<bool>, vector<char>
+and vector<int>. One can use vector<bool> and vector<char> for
+memory-effcient goal. The downside is that it only stores 0 and 1. And
+vector<int> can store missing values and multialleles.
+
 *** Code genotypes with missing allele as heterozygous.
 
 If you use =vector<bool>= and =vector<char>= to store the genotypes, then

@@ -163,7 +163,7 @@ class BcfHeader
   public:
     BcfHeader() {}
 
-    virtual ~BcfHeader() {}
+    ~BcfHeader() {}
 
     /** @brief print out the header */
     friend std::ostream & operator<<(std::ostream & out, const BcfHeader & h)
@@ -366,7 +366,7 @@ class BcfRecord
         gtPhase.resize(nsamples, 0);
     }
 
-    virtual ~BcfRecord() {}
+    ~BcfRecord() {}
 
     /** @brief stream out the variant */
     friend std::ostream & operator<<(std::ostream & out, const BcfRecord & v)
@@ -1238,7 +1238,7 @@ class BcfReader
         if(itr) hts_itr_destroy(itr);
     }
 
-    virtual ~BcfReader()
+    ~BcfReader()
     {
         if(fp) hts_close(fp);
         if(itr) hts_itr_destroy(itr);
@@ -1346,6 +1346,7 @@ class BcfWriter
     bcf1_t * b = bcf_init();
     kstring_t s = {0, 0, NULL}; // kstring
     bool isHeaderWritten = false;
+    bool isClosed = false;
 
   public:
     /// header object initialized by initalHeader
@@ -1408,9 +1409,9 @@ class BcfWriter
         initalHeader(h);
     }
 
-    virtual ~BcfWriter()
+    ~BcfWriter()
     {
-        close();
+        if(!isClosed) close();
     }
 
     /**
@@ -1444,8 +1445,9 @@ class BcfWriter
     void close()
     {
         if(!isHeaderWritten) writeHeader();
-        if(fp) hts_close(fp);
         if(b) bcf_destroy(b);
+        if(fp) hts_close(fp);  // be careful of double free
+        isClosed = true;
     }
 
     /// initial a VCF header using the internal template given a specific version. VCF4.1 is the default
@@ -1465,7 +1467,7 @@ class BcfWriter
     /// write a string to a vcf line
     void writeLine(const std::string & vcfline)
     {
-        if(!isHeaderWritten) writeHeader();
+        if(!isHeaderWritten && !writeHeader()) throw std::runtime_error("could not write header out\n");
         std::vector<char> line(vcfline.begin(), vcfline.end());
         line.push_back('\0'); // don't forget string has no \0;
         s.s = &line[0];

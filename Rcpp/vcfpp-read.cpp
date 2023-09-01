@@ -42,8 +42,8 @@ List tableGL(std::string vcffile, std::string region, std::string samples = "-")
     CharacterVector chr(nsnps), ref(nsnps), alt(nsnps), id(nsnps), filter(nsnps), info(nsnps);
     IntegerVector pos(nsnps);
     NumericVector qual(nsnps);
-    vector<vector<int>> GL(nsnps);
-    vector<int> gl;
+    vector<vector<double>> GL(nsnps); // R only have double
+    vector<float> gl;
     for(int i = 0; i < nsnps; i++)
     {
         vcf.getNextVariant(var);
