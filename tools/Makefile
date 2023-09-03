@@ -1,6 +1,6 @@
 HTSINC   = /usr/local/include
 HTSLIB   = /usr/local/lib
-VCFPP   = /usr/local/include
+VCFPP   = ../
 CXX      = g++
 CXXFLAGS = -std=c++11 -Wall -O3
 INC      =  -I$(HTSINC)

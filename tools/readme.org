@@ -14,22 +14,26 @@ otherwise, you need to specifiy the customized path
 make -j4 VCFPP=/path/to/vcfpp HTSINC=/path/to/htslib/header HTSLIB=/path/to/htslib/libray
 #+end_src
 
-- Syllable PBWT supports compressed VCF/BCF
+* Syllable PBWT supports compressed VCF/BCF
 
 [[SyllablePBWT.cpp]]
 
-- Create DS tag for diploid samples given GP or GT tag
+* Convert VCF/BCF to BEAGLE file
+
+[[vcf2beagle.cpp]]
+
+* Create DS tag for diploid samples given GP or GT tag
 
 [[dosage.cpp]]
 
-- Swap REF and ALT and flip corresponding genotypes
+* Swap REF and ALT and flip corresponding genotypes
 
 [[flipGT.cpp]]
 
-- Increment POS for duplicated biallelics SNPs
+* Increment POS for duplicated biallelics SNPs
 
 [[increaseDupPos.cpp]]
 
-- Report multiallelics
+* Report multiallelics
 
 [[multiallelics.cpp]]

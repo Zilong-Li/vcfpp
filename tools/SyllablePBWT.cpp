@@ -1,4 +1,4 @@
-// -*- compile-command: "g++ SyllablePBWT.cpp -o SyllablePBWT -std=c++11 -O3 -Wall -lhts -lz -lm -lbz2 -llzma -lcurl" -*-
+// -*- compile-command: "g++ SyllablePBWT.cpp -o SyllablePBWT -std=c++11 -O3 -Wall -lhts" -*-
 #include "SyllablePBWT.h"
 
 int main(int argc, char * argv[])
@@ -6,7 +6,7 @@ int main(int argc, char * argv[])
 
     // ========= helper message and parameters parsing ============================
     const std::vector<std::string> args(argv + 1, argv + argc);
-    if(argc <= 1 || args[0] == "-h" || args[0] == "-help")
+    if(argc <= 1 || args[0] == "-h" || args[0] == "-help" || args[0] == "--help")
     {
         std::cout << "Author: Zilong-Li (zilong.dk@gmail.com)\n"
                   << "Usage example:\n"

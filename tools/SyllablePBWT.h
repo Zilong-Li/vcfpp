@@ -28,7 +28,7 @@ using Long1D = std::vector<unsigned long long>;
 using Long2D = std::vector<Long1D>;
 
 // C++11 compatible
-template<typename T, typename = typename std::enable_if<std::is_unsigned<T>::value>::type>
+template<typename T>
 class SyllablePBWT
 {
   public:

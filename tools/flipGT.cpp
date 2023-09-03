@@ -8,7 +8,7 @@ int main(int argc, char* argv[])
 {
     // ========= helper message and parameters parsing ============================
     std::vector<std::string> args(argv + 1, argv + argc);
-    if (argc <= 1 || args[0] == "-h" || args[0] == "-help")
+    if(argc <= 1 || args[0] == "-h" || args[0] == "-help" || args[0] == "--help")
     {
         std::cout << "Author: Zilong-Li (zilong.dk@gmail.com)\n"
                   << "Description:\n"

@@ -1,4 +1,4 @@
-// -*- compile-command: "g++ increaseDupPos.cpp -std=c++11 -g -O3 -Wall -lhts -lz -lm -lbz2 -llzma -lcurl" -*-
+// -*- compile-command: "g++ increaseDupPos.cpp -std=c++11 -g -O3 -Wall -lhts" -*-
 #include "vcfpp.h"
 
 using namespace std;
@@ -9,7 +9,7 @@ int main(int argc, char* argv[])
 {
     // ========= helper message and parameters parsing ============================
     std::vector<std::string> args(argv + 1, argv + argc);
-    if (argc <= 1 || args[0] == "-h" || args[0] == "-help")
+    if(argc <= 1 || args[0] == "-h" || args[0] == "-help" || args[0] == "--help")
     {
         std::cout << "Author: Zilong-Li (zilong.dk@gmail.com)\n"
                   << "Description:\n"
@@ -27,7 +27,7 @@ int main(int argc, char* argv[])
         return 1;
     }
     std::string invcf, outvcf="-", samples = "-", region = "";
-    for (int i = 0; i < args.size(); i++)
+    for(size_t i = 0; i < args.size(); i++)
     {
         if (args[i] == "-i")
             invcf = args[++i];
