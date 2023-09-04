@@ -10,6 +10,7 @@
 \thanks{Zilong Li: Section for Computational and RNA Biology, Department of Biology, University of Copenhagen. \\
 Email: zilong.dk@gamil.com.}}
 \begin{titlepage} \maketitle
+  \begin{abstract}
   Given the complexity and popularity of the VCF/BCF format as well as
   ever-growing data size, there is always a need for fast and flexible
   methods to manipulate it in different programming languages. Static
@@ -29,6 +30,7 @@ Email: zilong.dk@gamil.com.}}
   loading VCF contents and processing genotypes than the R scripts
   using vcfR and data.table. Finally, some useful command line tools
   using vcfpp are available.
+  \end{abstract}
 \end{titlepage}
 #+end_export
 
@@ -57,7 +59,7 @@ is to offer full functionalities as htslib and provide simple and
 safe API in a single header file that can be easily integrated for
 writing scripts quickly in C++ and R.
 
-* Features 
+* Methods 
 
 vcfpp is implemented as a single header file for being easily
 integrated and compiled. There are four core class for manipulating
@@ -74,7 +76,7 @@ uncompressed and compressed VCF/BCF as summarized in Table [[tb:class]].
 | VCF/BCF header and operations   | BcfHeader |
 |---------------------------------+-----------|
 
-* Usage
+* Results
 
 To demonstrate the power and performance of vcfpp, the
 following sections illustrate commonly used features of vcfpp and
@@ -167,7 +169,7 @@ out <- readbcf("bcf.gz")
 ## next perform statistical modeling 
 #+end_src
 
-* Benchmarking
+** Benchmarking
 
 In addition to simplicity and portability, I show how fast and
 efficient scripts using vcfpp can be. In the benchmarking, we
@@ -194,16 +196,16 @@ achieved by passing a region parameter.
 #+caption: Performance of counting heterozygous genotypes per sample in the 1000 Genome Project for chromosome 21. (^) used by /sourceCpp/ function. (*) used by loading data in two-step strategy.
 #+name: tb:counthets
 #+attr_latex: :align lllllll :placement [H]
-|-------------------+------------+-------+------------+-----------+----------------|
-| API               | Time (s)   | Ratio |   RAM (Gb) | Strategy  | Script         |
-|-------------------+------------+-------+------------+-----------+----------------|
-| vcfpp::BcfReader  | 118        |   1.0 |      0.006 | streaming | test-vcfpp.cpp |
-| vcfpp::BcfReader  | 119+5^     |   1.0 | 0.07+0.28^ | streaming | test-vcfpp-1.R |
-| cyvcf2::VCF       | 159        |   1.3 |       0.04 | streaming | test-cyvcf2.py |
-| vcfpp::BcfReader  | 168*+65    |   1.9 |         86 | two-step  | test-vcfpp-2.R |
-| vcfR::read.vcfR   | 604*+7992  |    70 |         74 | two-step  | test-vcfR.R    |
-| data.table::fread | 272*+10275 |    85 |         77 | two-step  | test-fread.R   |
-|-------------------+------------+-------+------------+-----------+----------------|
+|-------------------+------------+-------+------------+-----------|
+| API               | Time (s)   | Ratio |   RAM (Gb) | Strategy  |
+|-------------------+------------+-------+------------+-----------|
+| vcfpp::BcfReader  | 118        |   1.0 |      0.006 | streaming |
+| vcfpp::BcfReader  | 119+5^     |   1.0 | 0.07+0.28^ | streaming |
+| cyvcf2::VCF       | 159        |   1.3 |       0.04 | streaming |
+| vcfppR::tableGT   | 164*+196   |   1.8 |         73 | two-step  |
+| vcfR::read.vcfR   | 651*+1382  |   9.9 |        105 | two-step  |
+| data.table::fread | 272*+10275 |    85 |         77 | two-step  |
+|-------------------+------------+-------+------------+-----------|
 
 * Discussion
 
