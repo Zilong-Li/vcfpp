@@ -55,13 +55,13 @@ int main(int argc, char * argv[])
         {
             var.getFORMAT("PL", pl); // try get PL values
             out.resize(pl.size());
-            for(size_t i = 0; i < pl.size(); i++) out[i] = std::pow(10, -pl[i] / 10);
+            for(size_t i = 0; i < pl.size(); i++) out[i] = std::pow(10, -(double)pl[i] / 10.0);
         }
         else if(tag == "GL")
         {
             var.getFORMAT("GL", gl); // try get GL values
             out.resize(gl.size());
-            for(size_t i = 0; i < gl.size(); i++) out[i] = std::pow(10, gl[i]);
+            for(size_t i = 0; i < gl.size(); i++) out[i] = std::pow(10, (double)gl[i]);
         }
         else
         {
@@ -69,7 +69,7 @@ int main(int argc, char * argv[])
         }
         // normalize it
         line = var.CHROM() + "_" + to_string(var.POS()) + "\t" + var.REF() + "\t" + var.ALT();
-        for(int i = 0; i < nsamples; i++)
+        for(int i = 0; i < 3 * nsamples; i+=3)
         {
             double s = out[i] + out[i + 1] + out[i + 2];
             out[i] /= s;
