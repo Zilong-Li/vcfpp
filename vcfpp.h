@@ -2,7 +2,7 @@
  * @file        https://github.com/Zilong-Li/vcfpp/vcfpp.h
  * @author      Zilong Li
  * @email       zilong.dk@gmail.com
- * @version     v0.2.0
+ * @version     v0.3.0
  * @breif       a single C++ file for manipulating VCF
  * Copyright (C) 2022-2023.The use of this code is governed by the LICENSE file.
  ******************************************************************************/
@@ -358,6 +358,10 @@ class BcfRecord
     int nvalues = 0; // the number of values for a tag in FORMAT
 
   public:
+    /// if there is "." in GT for the sample, then it's coded as missing (TRUE)
+    std::vector<char> isGenoMissing; 
+
+  public:
     /** @brief initilize a BcfRecord object using a given BcfHeader object. */
     BcfRecord(const BcfHeader & h) : header(h)
     {
@@ -399,7 +403,7 @@ type as noted in the other overloading function.
     {
         ndst = 0;
         ret = bcf_get_genotypes(header.hdr, line, &gts, &ndst);
-        if(ret <= 0) return false; // gt not present
+        if(ret <= 0) throw std::runtime_error("genotypes not present");
         // if nploidy is not set manually. find the max nploidy using the first variant (eg. 2) resize v as
         // max(nploidy)
         // * nsamples (ret) NOTE: if ret == nsamples and only one sample then haploid
@@ -415,6 +419,7 @@ type as noted in the other overloading function.
             nploidy = ret / nsamples;
         }
         // work with nploidy == 1, haploid?
+        isGenoMissing.assign(nsamples, 0);
         int i, j, nphased = 0;
         noneMissing = true;
         fmt = bcf_get_fmt(header.hdr, line, "GT");
@@ -426,6 +431,7 @@ type as noted in the other overloading function.
             if(typeOfGT[i] == GT_UNKN)
             {
                 noneMissing = false; // set missing as het, user should check if isNoneMissing();
+                isGenoMissing[i] = 1;
                 v[i * nploidy + 0] = 1;
                 for(j = 1; j < nploidy_cur; j++) v[i * nploidy + j] = 0;
                 continue;
@@ -460,8 +466,9 @@ type as noted in the other overloading function.
     {
         ndst = 0;
         ret = bcf_get_genotypes(header.hdr, line, &gts, &ndst);
-        if(ret <= 0) return false; // gt not present
+        if(ret <= 0) throw std::runtime_error("genotypes not present");
         v.resize(ret);
+        isGenoMissing.assign(nsamples, 0);
         nploidy = ret / nsamples;
         int i, j, nphased = 0;
         noneMissing = true;
@@ -477,6 +484,7 @@ type as noted in the other overloading function.
                 if(bcf_gt_is_missing(ptr[j]))
                 {
                     noneMissing = false;
+                    isGenoMissing[i] = 1;
                     v[i * nploidy + j] = -9;
                     continue;
                 }
@@ -860,7 +868,7 @@ type as noted in the other overloading function.
             return true;
     }
 
-    /** @brief return boolean value indicates if current variant is INDEL or not */
+    /** @brief return boolean value indicates if current variant is exclusively INDEL */
     inline bool isIndel() const
     {
         // REF has multiple allels
@@ -874,28 +882,22 @@ type as noted in the other overloading function.
         return false;
     }
 
-    /** @brief return boolean value indicates if current variant is INDEL and DELETION or not */
-    inline bool isDeletion() const
+    /** @brief return boolean value indicates if current variant is multiallelic sites */
+    inline bool isMultiAllelics() const
     {
-        if(ALT().length() > 1) return false;
-        if(!isIndel()) return false;
-        if(ALT().length() == 0)
-            return true;
-        else if(ALT()[0] == '.')
-            return true;
-        if(REF().length() > ALT().length()) return true;
-        return false;
+        if(line->n_allele <= 2) return false;
+        return true;
     }
 
-    /** @brief return boolean value indicates if current variant is multi allelic or not */
-    inline bool isMultiAllelic() const
+    /** @brief return boolean value indicates if current variant is exclusively multiallelic SNP sites */
+    inline bool isMultiAllelicSNP() const
     {
-        // REF has multiple allels
+        // skip REF with length > 1, i.e. INDEL
         if(REF().length() > 1 || line->n_allele <= 2) return false;
         for(int i = 1; i < line->n_allele; i++)
         {
             std::string snp(line->d.allele[i]);
-            if(!(snp == "A" || snp == "C" || snp == "G" || snp == "T"))
+            if(snp.length() != 1)
             {
                 return false;
             }
@@ -903,7 +905,7 @@ type as noted in the other overloading function.
         return true;
     }
 
-    /** @brief return boolean value indicates if current variant is SNP (biallelic) or not */
+    /** @brief return boolean value indicates if current variant is exclusively biallelic SNP. Note ALT=* are skipped */
     inline bool isSNP() const
     {
         // REF and ALT have multiple allels
@@ -913,6 +915,78 @@ type as noted in the other overloading function.
         {
             return false;
         }
+        return true;
+    }
+
+    /** @brief return boolean value indicates if current variant has SNP type defined in vcf.h (htslib>=1.16) */
+    inline bool hasSNP() const
+    {
+        int type = bcf_has_variant_types(line, VCF_SNP, bcf_match_overlap);
+        if (type < 0) throw std::runtime_error("something wrong with variant type\n");
+        if (type == 0) return false;
+        return true;
+    }
+
+    /// return boolean value indicates if current variant has INDEL type defined in vcf.h (htslib>=1.16)
+    inline bool hasINDEL() const
+    {
+        int type = bcf_has_variant_types(line, VCF_INDEL, bcf_match_overlap);
+        if (type < 0) throw std::runtime_error("something wrong with variant type\n");
+        if (type == 0) return false;
+        return true;
+    }
+
+    /// return boolean value indicates if current variant has INS type defined in vcf.h (htslib>=1.16)
+    inline bool hasINS() const
+    {
+        int type = bcf_has_variant_types(line, VCF_INS, bcf_match_overlap);
+        if (type < 0) throw std::runtime_error("something wrong with variant type\n");
+        if (type == 0) return false;
+        return true;
+    }
+
+    /// return boolean value indicates if current variant has DEL type defined in vcf.h (htslib>=1.16)
+    inline bool hasDEL() const
+    {
+        int type = bcf_has_variant_types(line, VCF_DEL, bcf_match_overlap);
+        if (type < 0) throw std::runtime_error("something wrong with variant type\n");
+        if (type == 0) return false;
+        return true;
+    }
+
+    /// return boolean value indicates if current variant has MNP type defined in vcf.h (htslib>=1.16)
+    inline bool hasMNP() const
+    {
+        int type = bcf_has_variant_types(line, VCF_MNP, bcf_match_overlap);
+        if (type < 0) throw std::runtime_error("something wrong with variant type\n");
+        if (type == 0) return false;
+        return true;
+    }
+
+    /// return boolean value indicates if current variant has BND type defined in vcf.h (htslib>=1.16)
+    inline bool hasBND() const
+    {
+        int type = bcf_has_variant_types(line, VCF_BND, bcf_match_overlap);
+        if (type < 0) throw std::runtime_error("something wrong with variant type\n");
+        if (type == 0) return false;
+        return true;
+    }
+
+    /// return boolean value indicates if current variant has OTHER type defined in vcf.h (htslib>=1.16)
+    inline bool hasOTHER() const
+    {
+        int type = bcf_has_variant_types(line, VCF_OTHER, bcf_match_overlap);
+        if (type < 0) throw std::runtime_error("something wrong with variant type\n");
+        if (type == 0) return false;
+        return true;
+    }
+
+    /// return boolean value indicates if current variant has OVERLAP type defined in vcf.h (htslib>=1.16)
+    inline bool hasOVERLAP() const
+    {
+        int type = bcf_has_variant_types(line, VCF_OVERLAP, bcf_match_overlap);
+        if (type < 0) throw std::runtime_error("something wrong with variant type\n");
+        if (type == 0) return false;
         return true;
     }
 
@@ -970,10 +1044,10 @@ type as noted in the other overloading function.
         return std::string(line->d.allele[0]);
     }
 
-    /** @brief swap REF and ALT for biallelic */
+    /** @brief swap REF and ALT for biallelic SNP */
     inline void swap_REF_ALT()
     {
-        if(!isMultiAllelic()) std::swap(line->d.allele[0], line->d.allele[1]);
+        if(!isMultiAllelicSNP()) std::swap(line->d.allele[0], line->d.allele[1]);
     }
 
     /** @brief return raw ALT alleles as string */
@@ -1250,27 +1324,13 @@ class BcfReader
         return hts_set_threads(fp, n);
     }
 
-    /** @brief get the number of records of given region from index file */
-    uint64_t getRegionIndex(const std::string & region)
+    /** @brief get the number of records of given region */
+    uint64_t getVariantsCount(BcfRecord & r, const std::string & region)
     {
-        setRegion(region); // only one chromosome
-        int tid = 0, ret = 0, nseq = 0;
-        uint64_t records, v;
-        if(tidx)
-        {
-            tbx_seqnames(tidx, &nseq);
-        }
-        else
-        {
-            nseq = hts_idx_nseq(hidx);
-        }
-        for(tid = 0; tid < nseq; tid++)
-        {
-            ret = hts_idx_get_stat(tidx ? tidx->idx : hidx, tid, &records, &v);
-            // printf("%" PRIu64 "\n", records);
-            if(ret >= 0 && records > 0) return records;
-        }
-        return 0;
+        uint64_t c{0};
+        while(getNextVariant(r)) c++;
+        setRegion(region);  // reset the region
+        return c;
     }
 
     /**
@@ -1281,20 +1341,27 @@ class BcfReader
     {
         // 1. check and load index first
         // 2. query iterval region
+        // 3. if region is empty, use "."
         if(isEndWith(fname, "bcf") || isEndWith(fname, "bcf.gz"))
         {
             isBcf = true;
             hidx = bcf_index_load(fname.c_str());
             if(itr) bcf_itr_destroy(itr); // reset current region.
-            itr = bcf_itr_querys(hidx, header.hdr, region.c_str());
+            if (region.empty())
+                itr = bcf_itr_querys(hidx, header.hdr, ".");
+            else
+                itr = bcf_itr_querys(hidx, header.hdr, region.c_str());
         }
         else
         {
             isBcf = false;
             tidx = tbx_index_load(fname.c_str());
             assert(tidx != NULL && "error loading tabix index!");
-            if(itr) tbx_itr_destroy(itr); // reset current region.
-            itr = tbx_itr_querys(tidx, region.c_str());
+            if (itr) tbx_itr_destroy(itr);  // reset current region.
+            if (region.empty())
+                itr = tbx_itr_querys(tidx, ".");
+            else
+                itr = tbx_itr_querys(tidx, region.c_str());
             assert(itr != NULL && "no interval region found.failed!");
         }
     }

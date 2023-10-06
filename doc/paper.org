@@ -2,7 +2,7 @@
 #+setupfile: latex.org
 #+language: en
 #+startup: show2levels indent hidestars hideblocks
-#+options: title:nil toc:nil H:4 author:nil
+#+options: title:nil toc:nil H:4 author:nil num:nil
 #+bibliography: "ref.bib"
 
 #+begin_export latex
@@ -16,20 +16,19 @@ Email: zilong.dk@gamil.com.}}
   methods to manipulate it in different programming languages. Static
   languages like C++ has the superiority of performance, and modern
   C++ standards strive to provide growing standard library for
-  developing program quickly and easily. In this work, I present
-  vcfpp, a C++ API of htslib in a single header file, providing an
-  intuitive interface to manipulate VCF/BCF files rapidly and
-  safely. An example demonstrates how minimal vcfpp code can
-  manipulate variant records rapidly. Additionally, the simplicity and
-  portability makes vcfpp working with scripting language like R
-  easily. The second example demonstrates how vcfpp can be useful to
-  Statisticians analyzing genomics variations in R. In the
-  Benchmarking, a simple R script using vcfpp API shows faster speed
-  than script using cyvcf2 when streaming variant analysis. And in a
-  two-step setting, a R script using vcfpp has faster speed of both
-  loading VCF contents and processing genotypes than the R scripts
-  using vcfR and data.table. Finally, some useful command line tools
-  using vcfpp are available.
+  developing program quickly and easily. This work presents vcfpp, a
+  C++ API of htslib in a single file, providing an intuitive interface
+  to manipulate VCF/BCF files rapidly and safely, as well as being
+  portable. Additionally, this work introduces the vcfppR package to
+  demonstrate the usage of vcfpp API in writing R script and packages
+  esaily for analyzing as well as visualizing genomic variations in
+  R. In the Benchmarking, the R script using vcfpp API shows faster
+  speed than the python script using cyvcf2 API when streaming variant
+  analysis. And in a two-step setting, the vcfppR package shows faster
+  speed of both loading VCF contents and processing genotypes than the
+  vcfR package. Finally, some useful command line tools using vcfpp
+  are available to demonstrate the easy-to-use of vcfpp in writing a
+  C++ program.
   \end{abstract}
 \end{titlepage}
 #+end_export
@@ -43,27 +42,28 @@ representing genetic variation information with complicated
 specification [cite:@danecek2011]. Later on, as the ever-growing
 data size, the BCF format is designed to query and store big data
 efficiently. The C API of htslib provide the full functionalities to
-manipulate VCF and BCF format for both compressed and uncompressed
-files. As the C API is hard to use for in-proficient programmers,
-API of other languages are invented. Existing popular libraries
-include vcfR[cite:@brian2017] for R, cyvcf2 [cite:@pedersen2017a]
-for Python, hts-nim [cite:@pedersen2018] for Nim and vcflib
-[cite:@garrison2022] for C++. All are useful for corresponding
-community, having both advantages and disadvantages. In particular,
-vcflib is both an API and a large collection of command line tools,
-with the main disadvantage being not supporting BCF files. It is
+manipulate the VCF and BCF format for both compressed and
+uncompressed files. As the C API is hard to use for in-proficient
+programmers, API of other languages are invented. Existing popular
+libraries include vcfR[cite:@brian2017] for R, cyvcf2
+[cite:@pedersen2017a] for Python, hts-nim [cite:@pedersen2018] for
+Nim and vcflib [cite:@garrison2022] for C++. All are valuable for
+corresponding community but not perfect. In particular, vcflib is
+both an API and a large collection of command line tools, with the
+primary disadvantage being not supporting the BCF format. It is
 noteworthy that many methods written in C++ designed for large
-sample size can not even input the BCF file which is tailed for big
-data like Syllbable-PBWT [cite:@wang2023]. The motivation of vcfpp
-is to offer full functionalities as htslib and provide simple and
-safe API in a single header file that can be easily integrated for
-writing scripts quickly in C++ and R.
+sample size can not even input the BCF file tailed for big data or
+the compressed VCF file like Syllbable-PBWT [cite:@wang2023]. The
+motivation of vcfpp is to offer full functionalities as htslib and
+provide simple and safe API in a single header file that can be
+easily integrated for writing program quickly in C++ and R.
 
 * Methods 
 
 vcfpp is implemented as a single header file for being easily
 integrated and compiled. There are four core class for manipulating
-uncompressed and compressed VCF/BCF as summarized in Table [[tb:class]].
+the uncompressed and compressed VCF/BCF files as summarized in Table
+[[tb:class]].
 
 #+caption: vcfpp capabilities and implemented C++ class
 #+name: tb:class
@@ -78,45 +78,46 @@ uncompressed and compressed VCF/BCF as summarized in Table [[tb:class]].
 
 * Results
 
-To demonstrate the power and performance of vcfpp, the
-following sections illustrate commonly used features of vcfpp and
-highlight the portability of vcfpp in R. Other examples and further
-details of vcfpp can be found at https://github.com/Zilong-Li/vcfpp.
+To demonstrate the power and performance of vcfpp, the following
+sections illustrate commonly used features of vcfpp and highlight
+the vcfppR package as an example of vcfpp working with R.
 
 ** C++ API
 
-In this example, we count the number of heterozygous sites for each
-sample in all records. The following code first includes a single
-vcfpp.h file (line 1), opens a compressed BCF file constrained to 3
-samples and region "chr21" (line 2), and creates a variant record
-associated with the header information in the file (line 3). Then it
-defines several types of objects to collect the results we want (line
-4-6). Taking advantage of generic templates in C++, the type of field
-like genotype can be very flexible regarding memory consumption. Then
+In this example (Listing [[list1]]), we count the number of
+heterozygous sites for each sample across all records. The
+following code first includes a single vcfpp.h file (line 1),
+opens a compressed BCF file constrained to 3 samples and region
+"chr21" (line 2), and creates a variant record associated with the
+header information in the BCF (line 3). Then it defines several
+types of objects to collect the results we want (line 4-6). Taking
+advantage of generic templates in C++, the type of field like
+genotype can be very flexible regarding memory consumption. Then
 it starts iterating over the BCF file and processes each variant
-record in the loop (line 7). We ignore variants of other types (INDEL,
-SV), or with missing genotypes, or with /QUAL/ value smaller than 9,
-while we can also retrieve more information of the variant and do
-filtering (line 9-10). Finally, we count the number of heterozygous
-variant for each diploid sample (line 11-13). The core is just 13
-lines.
+record in the loop (line 7). We ignore variants of other types
+(INDEL, SV), or with /FILTER/ not being "PASS", or with /QUAL/ value
+smaller than 9, while we can also retrieve more information of the
+variant and do filtering (line 9-10). Finally, we count the number
+of heterozygous variant for each diploid sample (line 11-13). The
+core is just 12 lines.
 
+#+name: list1
 #+caption: Counting the number of heterozygous genotypes for 3 samples on chr21
 #+attr_latex: :options captionpos=t
 #+begin_src C++ -n
 #include <vcfpp.h>
 vcfpp::BcfReader vcf("bcf.gz", "chr21", "id1,id2,id3"); 
 vcfpp::BcfRecord var(vcf.header); // create a variant object
-vector<char> gt; // genotype can be bool, char or int type
+vector<int> gt; // genotype can be bool, char or int type
 vector<int> hetsum(vcf.nsamples, 0); // store the het counts
 float hwe, exchet; // capture more INFO
 while(vcf.getNextVariant(var)){
   var.getGenotypes(gt);
   var.getINFO("HWE",hwe), var.getINFO("ExcHet",exchet);//more
-  if(!var.isSNP()||!var.isNoneMissing()||var.QUAL()<9) continue; 
+  if(!var.isSNP()||var.QUAL()<9||var.FILTER()!="PASS")continue; 
   assert(var.ploidy()==2); // make sure it is diploidy
   for(int i=0; i<gt.size()/2; i++) 
-    hetsum[i] += abs(gt[2*i+0] - gt[2*i+1]);
+    hetsum[i] += abs(gt[2*i+0] - gt[2*i+1])==1;
 }
 #+end_src
 
@@ -126,19 +127,21 @@ while(vcf.getNextVariant(var)){
 
 While vcfpp is very simple for writing a C++ program, a single C++
 header file can be easily integrated into popular script languages
-like Python and R etc. The process of finding biological insights
-from variant information always involves statistical models, and
-Statisticians prefer analyzing and visualizing data in R. In this
-example, I demonstrate how vcfpp can work with R seamlessly by
-using Rcpp [cite:@eddelbuettel2011]. With the basic knowledge of
-C++ and Rcpp, we can write such a simple C++ function to get a
-list of genotypes and its quality by only changing the output
-objects to Rcpp::List. Then we can call the /readbcf/ function to
-proceed further statistical tests in R. This exhibits the
-advantage of vcfpp for developing R packages with VCF/BCF as
-input.
+like R and Python etc. The process of finding biological insights
+from variant information always involves statistical modeling and
+visualization, which is what R designed for. Therefore, I develop
+the vcfppR package to demonstrate how vcfpp can work with R
+seamlessly by using Rcpp [cite:@eddelbuettel2011]. With the basic
+knowledge of C++ and Rcpp, we can turn the C++ code in Listing
+[[list1]] into the Rcpp function to obtain a list of the number
+heterzygous sites per sample along with the IDs (listing [[list2]]),
+which can be compiled and called in R (Listing [[list3]]). As such, we
+can further proccess and visualize the results efficiently in R,
+such as stratifying the results by populations given external
+labels of each sample and visualizing them in boxplot (supp Fig1).
 
-#+caption: vcfpp-r.cpp
+#+name: list2
+#+caption: vcfpp-hets.cpp
 #+attr_latex: :options captionpos=t
 #+begin_src C++
 #include <Rcpp.h>
@@ -146,37 +149,60 @@ input.
 using namespace Rcpp;
 using namespace std;
 // [[Rcpp::export]]
-List readbcf(string vcffile) {
-    vcfpp::BcfReader vcf(vcffile);
-    vcfpp::BcfRecord var(vcf.header);
-    vector<vector<int>> GT, GQ;
-    vector<int> gt, gq; // store a vector of genotype
-    while (vcf.getNextVariant(var)) {
-        var.getGenotypes(gt);
-        var.getFORMAT("GQ",gq); // can get all other tags
-        GT.push_back(gt), GQ.push_back(gq);
-    }
-    return List::create(GT, GQ); 
+List heterozygosity(std::string vcffile,
+                    std::string region,
+                    std::string samples) {
+  // here copy the lines 2-14 in listing 1.
+  return List::create(Named("samples")=vcf.header.getSamples(),
+                      Named("hets")=hetsum);
 }
 #+end_src
 
-#+caption: The R code compiles and calls the above C++ code
+#+name: list3
+#+caption: The R code compiles and calls the vcfpp-het.cpp
 #+attr_latex: :options captionpos=t
 #+begin_src R
 library(Rcpp)
-sourceCpp("vcfpp-r.cpp")
-out <- readbcf("bcf.gz")
-## next perform statistical modeling 
+sourceCpp("vcfpp-hets.cpp")
+heterozygosity("bcf.gz", "chr21","id1,id2,id3");
 #+end_src
+
+** The vcfppR package
+
+The vcfppR package is developed and powered by the vcfpp API. For
+parsing the VCF in R, the /vcftable/ function can read contents of
+the VCF into the R data type rapidly with fine control of the
+region, the samples, the variant types, the INFO / FORMAT column
+and the filters. For instance, the code in Listing 4 parses the
+read depth per variant (DP) in the raw called VCF by the 1000
+Genomes Project through the URL link, restricting to 3 samples
+with variants in "chr21:1-10000000" region of SNP type and passing
+FILTER, as well as discarding the INFO column in the returned
+list. Consequently, the visual summarization is done by using
+/barplot/ in R.
+
+#+caption: vcftable in vcfppR
+#+attr_latex: :options captionpos=t
+#+begin_src R
+library(vcfppR)
+vcffile <- "https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000G_2504_high_coverage/working/20201028_3202_raw_GT_with_annot/20201028_CCDG_14151_B01_GRM_WGS_2020-08-05_chr21.recalibrated_variants.vcf.gz"
+vcf <- vcftable(vcffile, region="chr21:1-10000000", samples="NA12878,HG00118,HG00119", format="DP", vartype="snps", pass = TRUE, info = FALSE)
+boxplot(vcf$dp, names=vcf$samples, ylab="Read Depth (DP)")
+#+end_src
+
+Furthermore, as characterization of the variations is an essential
+task in understanding the genome, I showcase the /vcfsummary/
+function in summarizing the variations in the VCF by reproducing
+the statistics in the 1KGP paper [cite:@byrska-bishop2022].
 
 ** Benchmarking
 
-In addition to simplicity and portability, I show how fast and
-efficient scripts using vcfpp can be. In the benchmarking, we
-perform the same task as the cyvcf2 paper, that is counting
-heterozygous genotypes per sample using code in Listing 1. As shown
-in Table [[tb:counthets]], the "test-cyvcf2.py" is $1.3\times$ slower
-than the "test-vcfpp-1.R", and both use little RAM in a streaming
+In addition to simplicity and portability, I showcase the
+performance of vcfpp and vcfppR. In the benchmarking, I performed
+the same task as the cyvcf2 paper, that is counting heterozygous
+genotypes per sample using code in Listing 1. As shown in Table
+[[tb:counthets]], the "test-cyvcf2.py" is $1.3\times$ slower than the
+"test-vcfpp-1.R", and both use little RAM in a streaming
 strategy. As R packages usually load data into tables first and
 perform analysis later, I also write a function to load whole VCF
 content in R for such two-step comparison although it is not
@@ -185,55 +211,55 @@ only $1.9\times$ slower compared to $70\times$, $85\times$ slower
 for "test-vcfR.R" and "test-fread.R" respectively. This is because
 genotypes made by both vcfR and data.table::fread are characters,
 which are very slow to parse in R despite a faster string library
-was used. In contrast, with vcfpp, integer vectors of genotypes can
-be returned to R directly for computation. Moreover, regarding the
-best practice of data analysis in R, we usually want to inspect part
-of the data table first to make further decisions. And vcfpp has the
-full functionalities of htslib that is supporting reading BCF,
-selecting samples and regions. A rapid query of VCF content can be
-achieved by passing a region parameter.
+was used. In contrast, with vcfpp, integer vectors of genotypes
+can be returned to R directly for computation. Moreover, regarding
+the best practice of data analysis in R, we usually want to
+inspect part of the data table first to make further
+decisions. And vcfpp has the full functionalities of htslib that
+is supporting reading BCF, selecting samples and regions. A rapid
+query of VCF content can be achieved by passing a region
+parameter.
 
-#+caption: Performance of counting heterozygous genotypes per sample in the 1000 Genome Project for chromosome 21. (^) used by /sourceCpp/ function. (*) used by loading data in two-step strategy.
+#+caption: Performance of counting heterozygous genotypes per sample in the 1000 Genome Project for chromosome 21. (*) used by loading data in two-step strategy.
 #+name: tb:counthets
 #+attr_latex: :align lllllll :placement [H]
-|-------------------+------------+-------+------------+-----------|
-| API               | Time (s)   | Ratio |   RAM (Gb) | Strategy  |
-|-------------------+------------+-------+------------+-----------|
-| vcfpp::BcfReader  | 118        |   1.0 |      0.006 | streaming |
-| vcfpp::BcfReader  | 119+5^     |   1.0 | 0.07+0.28^ | streaming |
-| cyvcf2::VCF       | 159        |   1.3 |       0.04 | streaming |
-| vcfppR::tableGT   | 164*+196   |   1.8 |         73 | two-step  |
-| vcfR::read.vcfR   | 651*+1382  |   9.9 |        105 | two-step  |
-| data.table::fread | 272*+10275 |    85 |         77 | two-step  |
-|-------------------+------------+-------+------------+-----------|
+|-------------+------------+-------+----------+-----------|
+| API/Package | Time (s)   | Ratio | RAM (Gb) | Strategy  |
+|-------------+------------+-------+----------+-----------|
+| vcfpp       | 118        |   1.0 |    0.006 | streaming |
+| vcfppR      | 119        |   1.0 |     0.07 | streaming |
+| cyvcf2      | 159        |   1.3 |     0.04 | streaming |
+| vcfppR      | 164*+196   |   1.8 |       73 | two-step  |
+| vcfR        | 651*+1382  |   9.9 |      105 | two-step  |
+| data.table  | 272*+10275 |    85 |       77 | two-step  |
+|-------------+------------+-------+----------+-----------|
 
 * Discussion
 
 I have developed vcfpp, a fast and flexible C++ API for scripting
 high-performance genetic variant analyses. Its simplicity and
 portability can be very useful for both developing packages and
-writing daily used scripts. Many existing packages written in C++
-using customized VCF parser can be replaced with vcfpp to offer more
+writing daily used scripts. Many packages written in C++ using
+customized VCF parser can be replaced with vcfpp to offer more
 functionalities. For instance, imputation software STITCH
 [cite:@davies2016] and QUILT [cite:@davies2021] are using vcfpp to
 parse large reference panel in VCF/BCF format. Also, there are some
 useful command line tools available, such as a modified
-Syllable-PBWT with compressed VCF/BCF as input.
+Syllable-PBWT with the compressed VCF/BCF as input.
 
 * Software and Code
 
-The latest release of vcfpp.h can be downloaded from
-https://github.com/Zilong-Li/vcfpp/releases. Scripts for
-Benchmarking can be found here
-https://github.com/Zilong-Li/vcfpp/tree/main/scripts. More helpful
-example functions can be found at
-https://github.com/Zilong-Li/vcfpp.
+The latest release of vcfpp.h and documentation can be found at
+https://github.com/Zilong-Li/vcfpp. Scripts for Benchmarking can be
+found at https://github.com/Zilong-Li/vcfpp/tree/main/scripts. The
+vcfppR package is available at https://github.com/Zilong-Li/vcfppR.
 
 * Acknowledgments
 
-I would like to thank Anders Albrechtsen at Copenhagen University and
-Robert W Davies at Oxford University for helpful comments. Also, this
-project is inspired by open source projects SeqLib and cyvcf2.
+I would like to thank Anders Albrechtsen at Copenhagen University
+and Robert W Davies at Oxford University for helpful comments. They
+are Statisticians working on genetics as well as R enthusiast, whom
+I work with and learn a lot from.
 
 * Funding
 
@@ -241,6 +267,41 @@ This work is supported by the Novo Nordisk 462 Foundation
 (NNF20OC0061343).
 
 #+print_bibliography:
+\newpage
+\appendix
+
+* Supplementary
+
+** Example
+
+#+caption: vcfsummary in vcfppR
+#+attr_latex: :options captionpos=t
+#+begin_src R
+library(vcfppR)
+svfile <- "https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000G_2504_high_coverage/working/20210124.SV_Illumina_Integration/1KGP_3202.gatksv_svtools_novelins.freeze_V3.wAF.vcf.gz"
+sv <- vcfsummary(svfile, svtype = TRUE)
+par(mfrow=c(1,3)) ## layout in plots
+allsvs <- sv$summary[-1]
+bar <- barplot(allsvs, ylim = c(0, 1.1*max(allsvs)),
+               main = "Variant Count (all SVs)")
+text(bar, allsvs+4500, paste0("n: ", allsvs))
+boxplot(sv[c("DEL","DUP", "CNV", "INS","INV","CPX","CTX")],
+        main = "SVs per Genome stratified by SV types")
+ped <- read.table("https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000G_2504_high_coverage/20130606_g1k_3202_samples_ped_population.txt", h=T)
+ped <- ped[order(ped$Superpopulation),]
+supers <- unique(ped$Superpopulation)
+o <- lapply(supers, function(pop) {
+  id <- subset(ped, Superpopulation == pop)[,"SampleID"]
+  ord <- match(id, samples)
+  sapply(sv[-c(1,2)], "[", ord)
+})
+names(o) <- supers
+s <- as.data.frame(lapply(o, colMeans))
+barplot(colSums(s),
+        main = "SVs per Genome stratified by populations")
+#+end_src
+
+[[file:dp.pdf]]
 
 * Local setup :noexport:
 Local Variables:
