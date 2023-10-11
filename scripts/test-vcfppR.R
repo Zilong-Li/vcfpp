@@ -2,17 +2,20 @@
 
 library(vcfppR)
 
-run <- 1
 args <- commandArgs(trailingOnly = TRUE)
 vcffile <- args[1]
 run <- as.integer(args[2])
 
-system.time(vcf <- tableGT(vcffile, "chr21"))
+if(run == 1) {
+  print(paste("run", run))
+  print(system.time(res1 <- heterozygosity(vcffile)))
+  q(save="no")
+}
 
 if(run == 2) {
-  res <- sapply(vcf[["gt"]], function(a) {
-    n=length(a)
-    abs(a[seq(1,n,2)]-a[seq(2,n,2)])
-  })
-  hets<-rowSums(res)
+  print(paste("run", run))
+  print(system.time(vcf <- vcftable(vcffile, vartype = "snps")))
+  print(system.time(res2 <- colSums(vcf[["gt"]]==1, na.rm = TRUE)))
+  q(save="no")
 }
+

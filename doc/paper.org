@@ -20,15 +20,15 @@ Email: zilong.dk@gamil.com.}}
   C++ API of htslib in a single file, providing an intuitive interface
   to manipulate VCF/BCF files rapidly and safely, as well as being
   portable. Additionally, this work introduces the vcfppR package to
-  demonstrate the usage of vcfpp API in writing R script and packages
-  esaily for analyzing as well as visualizing genomic variations in
-  R. In the Benchmarking, the R script using vcfpp API shows faster
-  speed than the python script using cyvcf2 API when streaming variant
-  analysis. And in a two-step setting, the vcfppR package shows faster
-  speed of both loading VCF contents and processing genotypes than the
-  vcfR package. Finally, some useful command line tools using vcfpp
-  are available to demonstrate the easy-to-use of vcfpp in writing a
-  C++ program.
+  demonstrate the usage of developing R packages using vcfpp
+  seamlessly and esaily for analyzing and visualizing genomic
+  variations in R. In the Benchmarking, the vcfppR shows the same
+  performance as the C++ version, and shows faster speed than cyvcf2
+  when streaming variant analysis. Also, in a two-step setting, the
+  vcfppR shows faster speed of both loading VCF contents and
+  processing genotypes than the vcfR package. Finally, some useful
+  command line tools using vcfpp are available to demonstrate the
+  easy-to-use of vcfpp in writing a C++ program.
   \end{abstract}
 \end{titlepage}
 #+end_export
@@ -201,38 +201,38 @@ In addition to simplicity and portability, I showcase the
 performance of vcfpp and vcfppR. In the benchmarking, I performed
 the same task as the cyvcf2 paper, that is counting heterozygous
 genotypes per sample using code in Listing 1. As shown in Table
-[[tb:counthets]], the "test-cyvcf2.py" is $1.3\times$ slower than the
-"test-vcfpp-1.R", and both use little RAM in a streaming
-strategy. As R packages usually load data into tables first and
-perform analysis later, I also write a function to load whole VCF
-content in R for such two-step comparison although it is not
-preferable for this task. Notably, the "test-vcfpp-2.R" script is
-only $1.9\times$ slower compared to $70\times$, $85\times$ slower
-for "test-vcfR.R" and "test-fread.R" respectively. This is because
-genotypes made by both vcfR and data.table::fread are characters,
-which are very slow to parse in R despite a faster string library
-was used. In contrast, with vcfpp, integer vectors of genotypes
-can be returned to R directly for computation. Moreover, regarding
-the best practice of data analysis in R, we usually want to
-inspect part of the data table first to make further
-decisions. And vcfpp has the full functionalities of htslib that
-is supporting reading BCF, selecting samples and regions. A rapid
-query of VCF content can be achieved by passing a region
-parameter.
+[[tb:counthets]], the vcfppR has the same performance as the vcfpp C++
+API, while the cyvcf2 script is $1.4\times$ slower than the vcfppR
+script. In the streaming setting, all three scripts use little RAM
+for only loading one variant into memory. However, R packages like
+vcfR and data.table usually load all tabular data into memory
+first and perform analysis later. Additionaly, I develop /vcftable/
+function in vcfppR to load whole VCF content in R for such
+two-step comparison. Notably, the vcfppR is only $1.8\times$
+slower compared to $70\times$, $85\times$ slower for vcfR and
+data.table respectively. This is because genotype values returned
+by both vcfR and data.table::fread are characters, which are very
+slow to parse. In contrast, with vcfppR, integer matrix of
+genotypes can be returned to R directly for fast
+computation. Importantly, vcfpp and vcfppR offer the users the
+full functionalities of htslib, such as supporting BCF, selecting
+samples, regions and variant types. A rapid query of VCF content
+in vcfppR can be achieved by passing a region parameter to
+/vcftable/.
 
 #+caption: Performance of counting heterozygous genotypes per sample in the 1000 Genome Project for chromosome 21. (*) used by loading data in two-step strategy.
 #+name: tb:counthets
 #+attr_latex: :align lllllll :placement [H]
-|-------------+------------+-------+----------+-----------|
-| API/Package | Time (s)   | Ratio | RAM (Gb) | Strategy  |
-|-------------+------------+-------+----------+-----------|
-| vcfpp       | 118        |   1.0 |    0.006 | streaming |
-| vcfppR      | 119        |   1.0 |     0.07 | streaming |
-| cyvcf2      | 159        |   1.3 |     0.04 | streaming |
-| vcfppR      | 164*+196   |   1.8 |       73 | two-step  |
-| vcfR        | 651*+1382  |   9.9 |      105 | two-step  |
-| data.table  | 272*+10275 |    85 |       77 | two-step  |
-|-------------+------------+-------+----------+-----------|
+|-------------+------------+-------+----------+---------+-----------|
+| API/Package | Time (s)   | Ratio | RAM (Gb) | CPU (%) | Strategy  |
+|-------------+------------+-------+----------+---------+-----------|
+| vcfpp       | 118        |   1.0 |    0.006 |      99 | streaming |
+| vcfppR      | 118        |   1.0 |    0.076 |     101 | streaming |
+| cyvcf2      | 165        |   1.4 |    0.038 |     101 | streaming |
+| vcfppR      | 205*+10    |   1.8 |     64.7 |     100 | two-step  |
+| vcfR        | 678*+1147  |  15.5 |     97.5 |     100 | two-step  |
+| data.table  | 263*+11243 |  97.5 |     77.3 |     200 | two-step  |
+|-------------+------------+-------+----------+---------+-----------|
 
 * Discussion
 

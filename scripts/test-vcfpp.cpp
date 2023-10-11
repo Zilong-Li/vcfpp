@@ -1,6 +1,6 @@
-// -*- compile-command: "x86_64-conda-linux-gnu-c++ test-vcfpp.cpp -o test-vcfpp -std=c++11 -O3 -Wall -I/home/rlk420/mambaforge/envs/R/include -lhts" -*-
+// -*- compile-command: "x86_64-conda-linux-gnu-c++ test-vcfpp.cpp -o test-vcfpp -std=c++11 -O3 -Wall -I../ -I/home/rlk420/mambaforge/envs/R/include -lhts" -*-
 
-#include <vcfpp.h>
+#include "vcfpp.h"
 using namespace std;
 using namespace vcfpp;
 
@@ -37,16 +37,17 @@ int main(int argc, char * argv[])
     // ========= core calculation part ===========================================
     BcfReader vcf(vcffile, region, samples);
     BcfRecord var(vcf.header); // construct a variant record
-    vector<char> gt; // genotype can be bool, char or int type
+    vector<int> gt; // genotype can be bool, char or int type
     vector<int> hetsum(vcf.nsamples, 0);
     while(vcf.getNextVariant(var))
     {
         var.getGenotypes(gt);
         // analyze SNP variant with no genotype missingness
-        if(!var.isSNP() || !var.isNoneMissing()) continue;
-        assert(var.ploidy() == 2); // make sure it is diploidy
-        for(int i = 0; i < gt.size() / 2; i++) hetsum[i] += abs(gt[2 * i + 0] - gt[2 * i + 1]);
+        if (!var.isSNP()) continue; // analyze SNPs only
+        assert(var.ploidy() == 2);  // make sure it is diploidy
+        for (int i = 0; i < gt.size() / 2; i++)
+            hetsum[i] += abs(gt[2 * i + 0] - gt[2 * i + 1]) == 1;
     }
-    for(auto i : hetsum) cout << i << endl;
+    // for(auto i : hetsum) cout << i << endl;
     return 0;
 }
