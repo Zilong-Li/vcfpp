@@ -2,7 +2,7 @@
 #+setupfile: latex.org
 #+language: en
 #+startup: show2levels indent hidestars hideblocks
-#+options: title:nil toc:nil H:4 author:nil num:nil
+#+options: title:nil toc:nil H:4 author:nil num:nil date:nil
 #+bibliography: "ref.bib"
 
 #+begin_export latex

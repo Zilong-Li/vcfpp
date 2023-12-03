@@ -2,7 +2,7 @@
  * @file        https://github.com/Zilong-Li/vcfpp/vcfpp.h
  * @author      Zilong Li
  * @email       zilong.dk@gmail.com
- * @version     v0.3.1
+ * @version     v0.3.2
  * @breif       a single C++ file for manipulating VCF
  * Copyright (C) 2022-2023.The use of this code is governed by the LICENSE file.
  ******************************************************************************/
@@ -1252,11 +1252,11 @@ class BcfReader
     bool isBcf; // if the input file is bcf or vcf;
 
   public:
-    /** @brief a BcfHeader object */
+    /// a BcfHeader object
     BcfHeader header;
-    /** @brief number of samples in the VCF */
+    /// number of samples in the VCF
     int nsamples;
-    /** @brief number of samples in the VCF */
+    /// number of samples in the VCF
     std::vector<std::string> SamplesName;
 
     /// Construct an empty BcfReader
@@ -1296,10 +1296,8 @@ class BcfReader
     BcfReader(const std::string & file, const std::string & region, const std::string & samples) : fname(file)
     {
         open(file);
-        header.setSamples(samples);
-        nsamples = bcf_hdr_nsamples(header.hdr);
         if(!region.empty()) setRegion(region);
-        SamplesName = header.getSamples();
+        if(!samples.empty()) setSamples(samples);
     }
 
     /// return a BcfHeader object
@@ -1353,6 +1351,17 @@ class BcfReader
         while(getNextVariant(r)) c++;
         setRegion(region); // reset the region
         return c;
+    }
+    
+    /**
+     * @brief explicitly stream to specific samples
+     * @param samples the string is bcftools-like format, which is comma separated list of samples to include (or exclude with "^" prefix).
+     * */
+    void setSamples(const std::string & samples)
+    {
+        header.setSamples(samples);
+        nsamples = bcf_hdr_nsamples(header.hdr);
+        SamplesName = header.getSamples();
     }
 
     /**
