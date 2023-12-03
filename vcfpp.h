@@ -381,7 +381,10 @@ class BcfRecord
     std::vector<char> isGenoMissing;
 
   public:
-    /** @brief initilize a BcfRecord object using a given BcfHeader object. */
+    /// empty constructor. call init() afterwards
+    BcfRecord() {}
+
+    /// constructor with a given BcfHeader object
     BcfRecord(const BcfHeader & h) : header(h)
     {
         nsamples = header.nSamples();
@@ -390,6 +393,15 @@ class BcfRecord
     }
 
     ~BcfRecord() {}
+
+    /// initilize a BcfRecord object using a given BcfHeader object
+    void init(const BcfHeader & h)
+    {
+        header = h;
+        nsamples = header.nSamples();
+        typeOfGT.resize(nsamples);
+        gtPhase.resize(nsamples, 0);
+    }
 
     /** @brief stream out the variant */
     friend std::ostream & operator<<(std::ostream & out, const BcfRecord & v)
@@ -1352,10 +1364,11 @@ class BcfReader
         setRegion(region); // reset the region
         return c;
     }
-    
+
     /**
      * @brief explicitly stream to specific samples
-     * @param samples the string is bcftools-like format, which is comma separated list of samples to include (or exclude with "^" prefix).
+     * @param samples the string is bcftools-like format, which is comma separated list of samples to include
+     * (or exclude with "^" prefix).
      * */
     void setSamples(const std::string & samples)
     {
