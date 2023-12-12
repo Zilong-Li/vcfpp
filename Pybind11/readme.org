@@ -1,0 +1,23 @@
+#+title: How to use vcfpp in Python
+#+author: Zilong Li
+#+language: en
+
+* Install pybind11 and htslib in conda
+
+#+begin_src shell
+conda install -c conda-forge pybind11
+conda install -c bioconda htslib
+#+end_src
+
+* Compiling the py_example.cpp
+
+#+begin_src shell
+g++ -O3 -Wall -shared -std=c++11 -fPIC $(python3 -m pybind11 --includes) example.cpp -o example$(python3-config --extension-suffix) -I${CONDA_PREFIX}/include -L${CONDA_PREFIX}/lib -lhts
+#+end_src
+
+* Call the C++ function in ~Python~
+
+#+begin_src python
+import py_example
+ret = py_example.heterzygosity(vcffile, region, samples)
+#+end_src

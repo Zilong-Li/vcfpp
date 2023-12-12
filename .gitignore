@@ -21,6 +21,7 @@ test.cpp
 *.bin
 compile_commands.json
 *.o
-*log
+*llog*
 *gz*
 *dSYM
+*.so

@@ -13,9 +13,6 @@ if [ ! -f $vcffile ];then
 fi
 
    
-# first compile a C++ script
-x86_64-conda-linux-gnu-c++ test-vcfpp.cpp -o test-vcfpp -std=c++11 -O3 -Wall -I/home/rlk420/mambaforge/envs/R/include -lhts
-
 
 # to be fair, make sure cyvcf2 and vcfpp are compiled against same version of htslib.
 # do the benchmarking in same conda env
@@ -24,8 +21,11 @@ $gtime -vvv Rscript test-fread.R $vcffile &> test-fread.llog.1 &
 $gtime -vvv Rscript test-vcfR.R $vcffile 2 &> test-vcfR.llog.2 &
 $gtime -vvv Rscript test-vcfppR.R $vcffile 1 &> test-vcfppR.llog.1 &
 $gtime -vvv Rscript test-vcfppR.R $vcffile 2 &> test-vcfppR.llog.2 &
+$gtime -vvv Rscript test-vcfppR.R $vcffile 3 &> test-vcfppR.llog.3 &
 $gtime -vvv python test-cyvcf2.py $vcffile &> test-cyvcf2.llog &
-$gtime -vvv ./test-vcfpp -i $vcffile &> test-vcfpp.llog &
+# compare the above scripts against a compiled C++ program
+# x86_64-conda-linux-gnu-c++ test-vcfpp.cpp -o test-vcfpp -std=c++11 -O3 -Wall -I/home/rlk420/mambaforge/envs/R/include -lhts
+# $gtime -vvv ./test-vcfpp -i $vcffile &> test-vcfpp.llog &
 wait
 
 echo "jobs done. god day"

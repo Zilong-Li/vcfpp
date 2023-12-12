@@ -818,7 +818,7 @@ type as noted in the other overloading function.
      * */
     void setPhasing(const std::vector<char> & v)
     {
-        assert(v.size() == nsamples);
+        assert((int)v.size() == nsamples);
         gtPhase = v;
     }
 
@@ -1042,12 +1042,6 @@ type as noted in the other overloading function.
         return line->pos + 1;
     }
 
-    /** @brief modify position given 1-based value */
-    inline void setAlleleStr(const char * alleles_string)
-    {
-        bcf_update_alleles_str(header.hdr, line, alleles_string);
-    }
-
     /** @brief modify CHROM value */
     inline void setCHR(const char * chr)
     {
@@ -1058,6 +1052,18 @@ type as noted in the other overloading function.
     inline void setPOS(int64_t p)
     {
         line->pos = p - 1;
+    }
+
+    /** @brief update ID */
+    inline void setID(const char * s)
+    {
+        bcf_update_id(header.hdr, line, s);
+    }
+    
+    /** @brief set REF and ALT alleles given a string seperated by comma */
+    inline void setRefAlt(const char * alleles_string)
+    {
+        bcf_update_alleles_str(header.hdr, line, alleles_string);
     }
 
     /** @brief return 0-base start of the variant (can be any type) */
