@@ -20,7 +20,7 @@ TEST_CASE("Calculate the heterozygosity rate", "[bcf-reader]")
         // analyze SNP variant with no genotype missingness
         if(!var.isSNP() || !var.isNoneMissing()) continue;
         assert(var.ploidy() == 2); // make sure it is diploidy
-        for(int i = 0; i < gt.size() / 2; i++) hetsum[i] += abs(gt[2 * i + 0] - gt[2 * i + 1]);
+        for(size_t i = 0; i < gt.size() / 2; i++) hetsum[i] += abs(gt[2 * i + 0] - gt[2 * i + 1]);
     }
     for(auto i : hetsum)
     {

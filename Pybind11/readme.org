@@ -12,12 +12,12 @@ conda install -c bioconda htslib
 * Compiling the py_example.cpp
 
 #+begin_src shell
-g++ -O3 -Wall -shared -std=c++11 -fPIC $(python3 -m pybind11 --includes) example.cpp -o example$(python3-config --extension-suffix) -I${CONDA_PREFIX}/include -L${CONDA_PREFIX}/lib -lhts
+g++ -O3 -Wall -shared -std=c++11 -fPIC $(python3 -m pybind11 --includes) py_example.cpp -o py_example$(python3-config --extension-suffix) -I${CONDA_PREFIX}/include -L${CONDA_PREFIX}/lib -lhts
 #+end_src
 
 * Call the C++ function in ~Python~
 
 #+begin_src python
 import py_example
-ret = py_example.heterzygosity(vcffile, region, samples)
+ret = py_example.heterozygosity(vcffile, region, samples)
 #+end_src

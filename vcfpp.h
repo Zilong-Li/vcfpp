@@ -87,12 +87,6 @@ using isValidGT = typename std::enable_if<std::is_same<T, std::vector<bool>>::va
                                           bool>::type;
 
 template<typename T>
-using isGtVector = typename std::enable_if<
-    std::is_same<T, std::vector<bool>>::value || std::is_same<T, std::vector<char>>::value
-        || std::is_same<T, std::string>::value || std::is_same<T, std::vector<int>>::value,
-    bool>::type;
-
-template<typename T>
 using isFormatVector = typename std::enable_if<std::is_same<T, std::vector<float>>::value
                                                    || std::is_same<T, std::vector<char>>::value
                                                    || std::is_same<T, std::vector<int>>::value,
@@ -497,7 +491,7 @@ type as noted in the other overloading function.
     {
         ndst = 0;
         ret = bcf_get_genotypes(header.hdr, line, &gts, &ndst);
-        if(ret <= 0) throw std::runtime_error("genotypes not present");
+        if(ret <= 0) throw std::runtime_error("genotypes not present. make sure you initilized the variant object first\n");
         v.resize(ret);
         isGenoMissing.assign(nsamples, 0);
         nploidy = ret / nsamples;
@@ -752,61 +746,30 @@ type as noted in the other overloading function.
     }
 
     /**
-     * @brief set genotypes from scratch assume genotype not present
-     * @param v valid input includevector<bool>, vector<char>, vector<int>, std::string
+     * @brief set genotypes from scratch even if genotypes not present
+     * @param v  the genotypes of vector<int> type
      * @return bool
      * */
-    template<class T>
-    isGtVector<T> setGenotypes(const T & v)
+    bool setGenotypes(const std::vector<int> & v)
     {
         // bcf_gt_type
         int i, j, k;
         nploidy = v.size() / nsamples;
-        gts = (int *)malloc(nsamples * nploidy * sizeof(int));
+        gts = (int32_t *)malloc(v.size() * sizeof(int32_t));
         for(i = 0; i < nsamples; i++)
         {
             for(j = 0; j < nploidy; j++)
             {
                 k = i * nploidy + j;
-                if(gtPhase[i])
+                if(v[k] == -9 || v[k] == bcf_int32_missing)
+                    gts[k] = bcf_gt_missing;
+                else if(gtPhase[i])
                     gts[k] = bcf_gt_phased(v[k]);
                 else
                     gts[k] = bcf_gt_unphased(v[k]);
             }
         }
         if(bcf_update_genotypes(header.hdr, line, gts, v.size()) < 0)
-            throw std::runtime_error("couldn't set genotypes correctly.\n");
-        else
-            return true;
-    }
-
-    /**
-     * @brief update genotypes for current record, assume genotypes present
-     * @param v valid input includevector<bool>, vector<char>, vector<int>, std::string
-     * @return bool
-     * */
-    template<class T>
-    isGtVector<T> updateGenotypes(const T & v)
-    {
-        // bcf_gt_type
-        ndst = 0;
-        ret = bcf_get_genotypes(header.hdr, line, &gts, &ndst);
-        if(ret <= 0) throw std::runtime_error("genotypes not present for current record.\n");
-        assert(ret == v.size());
-        nploidy = ret / nsamples;
-        int i, j, k;
-        for(i = 0; i < nsamples; i++)
-        {
-            for(j = 0; j < nploidy; j++)
-            {
-                k = i * nploidy + j;
-                if(gtPhase[i])
-                    gts[k] = bcf_gt_phased(v[k]);
-                else
-                    gts[k] = bcf_gt_unphased(v[k]);
-            }
-        }
-        if(bcf_update_genotypes(header.hdr, line, gts, ret) < 0)
             throw std::runtime_error("couldn't set genotypes correctly.\n");
         else
             return true;
@@ -1059,7 +1022,7 @@ type as noted in the other overloading function.
     {
         bcf_update_id(header.hdr, line, s);
     }
-    
+
     /** @brief set REF and ALT alleles given a string seperated by comma */
     inline void setRefAlt(const char * alleles_string)
     {

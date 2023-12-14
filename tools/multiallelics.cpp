@@ -44,7 +44,7 @@ int main(int argc, char* argv[])
     BcfWriter bw(outvcf, vcf.header);
     while (vcf.getNextVariant(var))
     {
-        if (var.isMultiAllelic())
+        if (var.isMultiAllelics())
             bw.writeRecord(var);
     }
 

@@ -26,7 +26,7 @@ int main(int argc, char* argv[])
         return 1;
     }
     std::string invcf, outvcf = "-", samples = "-", region = "";
-    for (int i = 0; i < args.size(); i++)
+    for (size_t i = 0; i < args.size(); i++)
     {
         if (args[i] == "-i")
             invcf = args[++i];
@@ -41,13 +41,14 @@ int main(int argc, char* argv[])
     BcfReader vcf(invcf, region, samples);
     BcfRecord var(vcf.header);
     BcfWriter bw(outvcf, vcf.header);
-    std::vector<char> gts;
+    std::vector<int> gts;
     while (vcf.getNextVariant(var))
     {
         var.getGenotypes(gts);
         var.swap_REF_ALT();
         for (auto& g : gts)
         {
+            if(g == -9) continue;
             g = !g;
         }
         var.setGenotypes(gts);
