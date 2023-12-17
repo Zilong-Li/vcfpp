@@ -26,6 +26,7 @@ Features:
   - [[#variants-operation][Variants Operation]]
   - [[#header-operation][Header Operation]]
 - [[#working-with-r][Working with R]]
+- [[#working-with-python][Working with Python]]
 - [[#command-line-tools][Command Line Tools]]
 #+END_QUOTE
 
@@ -162,6 +163,10 @@ All variants related API can be found in [[https://zilongli.org/proj/vcfpp/class
 * Working with R
 
 Examples of vcfpp working with R are in folder [[Rcpp]] and https://github.com/Zilong-Li/vcfppR.
+
+* Working with Python
+
+Examples of vcfpp working with Python are in folder [[Pybind11]].
 
 * Command Line Tools
 

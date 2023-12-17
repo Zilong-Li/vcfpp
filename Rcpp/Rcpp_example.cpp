@@ -1,12 +1,11 @@
 #include "../vcfpp.h"
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
+#include <Rcpp.h>
 
-namespace py = pybind11;
-
+using namespace Rcpp;
 using namespace vcfpp;
 using namespace std;
 
+// [[Rcpp::export]]
 vector<int> heterozygosity(std::string vcffile, std::string region = "", std::string samples = "")
 {
     BcfReader vcf(vcffile, region, samples);
@@ -22,12 +21,4 @@ vector<int> heterozygosity(std::string vcffile, std::string region = "", std::st
         for(size_t i = 0; i < gt.size() / 2; i++) hetsum[i] += abs(gt[2 * i + 0] - gt[2 * i + 1]) == 1;
     }
     return hetsum;
-}
-
-PYBIND11_MODULE(py_example, m)
-{
-    m.doc() = "pybind11 example plugin"; // optional module docstring
-
-    m.def("heterozygosity", &heterozygosity,
-          "A function that calculates the heterozygosity for each sample in the VCF");
 }

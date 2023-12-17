@@ -17,10 +17,11 @@ If you don't want to build a R package, then you just need to install
 you have a conda environment =~/mambaforge/envs/R=, the system
 environment are =~/mambaforge/envs/R/include= for header files and
 =~/mambaforge/envs/R/lib= for library files. Then you can compile and run
-functions from the =vcfpp-read.cpp= file in R by
+functions from the =Rcpp_example.cpp= file in R by
 
 #+begin_src R
 library(Rcpp)
+## setup library path if they are not in the system env
 Sys.setenv("PKG_LIBS"="-I~/mambaforge/envs/R/include -L~/mambaforge/envs/R/include -lhts")
-sourceCpp("vcfpp-read.cpp", verbose=TRUE, rebuild=TRUE)
+sourceCpp("Rcpp_example.cpp", verbose=TRUE, rebuild=TRUE)
 #+end_src

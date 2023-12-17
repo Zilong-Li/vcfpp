@@ -573,7 +573,7 @@ type as noted in the other overloading function.
     bool getFORMAT(std::string tag, std::vector<std::string> & v)
     {
         fmt = bcf_get_fmt(header.hdr, line, tag.c_str());
-        if(!fmt) throw std::runtime_error("there is no " + tag + " in FORMAT of this variant.\n");
+        if(!fmt) throw std::runtime_error("there is no " + tag + " in FORMAT for this variant of ID=" + ID());
         nvalues = fmt->n;
         // if ndst < (fmt->n+1)*nsmpl; then realloc is involved
         ret = -1, ndst = 0;
