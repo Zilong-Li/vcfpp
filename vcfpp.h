@@ -2,7 +2,7 @@
  * @file        https://github.com/Zilong-Li/vcfpp/vcfpp.h
  * @author      Zilong Li
  * @email       zilong.dk@gmail.com
- * @version     v0.3.2
+ * @version     v0.3.3
  * @breif       a single C++ file for manipulating VCF
  * Copyright (C) 2022-2023.The use of this code is governed by the LICENSE file.
  ******************************************************************************/
@@ -22,7 +22,7 @@
  * \section install_sec Installation
  *
  * - <EM> include "vcfpp.h" </EM> to your program and compile it by <EM> g++ my.cpp -std=c++11 -Wall -I. -lhts
- * -lz -lm -lbz2 -llzma -lcurl </EM>
+ * - </EM>
  * - make sure you have https://github.com/samtools/htslib installed on your system and the it is in your
  * environment.
  *
@@ -728,7 +728,7 @@ type as noted in the other overloading function.
             return true;
     }
 
-    /** remove the given tag from INFO*/
+    /** remove the given tag from INFO of the variant*/
     void removeINFO(std::string tag)
     {
         ret = -1;
@@ -783,6 +783,20 @@ type as noted in the other overloading function.
     {
         assert((int)v.size() == nsamples);
         gtPhase = v;
+    }
+    
+    /** remove the given tag from FORMAT of the variant*/
+    void removeFORMAT(std::string tag)
+    {
+        ret = -1;
+        int tag_id = bcf_hdr_id2int(header.hdr, BCF_DT_ID, tag.c_str());
+        if(bcf_hdr_id2type(header.hdr, BCF_HL_FMT, tag_id) == (BCF_HT_INT & 0xff))
+            ret = bcf_update_format_int32(header.hdr, line, tag.c_str(), NULL, 0);
+        else if(bcf_hdr_id2type(header.hdr, BCF_HL_FMT, tag_id) == (BCF_HT_STR & 0xff))
+            ret = bcf_update_format_char(header.hdr, line, tag.c_str(), NULL, 0);
+        else if(bcf_hdr_id2type(header.hdr, BCF_HL_FMT, tag_id) == (BCF_HT_REAL & 0xff))
+            ret = bcf_update_format_float(header.hdr, line, tag.c_str(), NULL, 0);
+        if(ret < 0) throw std::runtime_error("couldn't remove " + tag + " correctly.\n");
     }
 
     /**
