@@ -141,8 +141,8 @@ inline std::vector<std::string> split_string(const std::string & s, const std::s
 
 /**
  * @class BcfHeader
- * @brief Object represents the header in VCF
- * @note  nothing important
+ * @brief Object represents header of the VCF, offering methods to access and modify the tags
+ * @note  BcfHeader has 3 friends, BcfReader, BcfWriter and BcfRecord.
  **/
 class BcfHeader
 {
@@ -159,7 +159,7 @@ class BcfHeader
 
     ~BcfHeader() {}
 
-    /** @brief print out the header */
+    /** @brief stream out the header */
     friend std::ostream & operator<<(std::ostream & out, const BcfHeader & h)
     {
         out << h.asString();
@@ -348,8 +348,8 @@ class BcfHeader
 
 /**
  * @class BcfRecord
- * @brief Object represents a record in VCF
- * @note  the object is constructed using a BcfHeader object and needs to be filled in by calling
+ * @brief Object represents a variant record in the VCF, offering methods to access and modify fields.
+ * @note  BcfRecord has to be associated with a BcfHeader object and needs to be filled in by calling
  *BcfReader.getNextVariant function.
  **/
 class BcfRecord
@@ -415,13 +415,12 @@ class BcfRecord
     }
 
     /**
-     * @brief fill in the input vector with genotypes of 0 and 1. only works for ploidy<=2. genotypes with
-missing allele is coded as heterozygous
-     * @param v valid input are vector<bool> vector<char> type
+     * @brief fill in the input vector with genotypes of 0 and 1. only works for ploidy<=2. Genotypes with
+     * missing allele is coded as heterozygous
+     * @param v valid input includes vector<bool> and vector<char> type
      * @return bool
-     * @note user can use isNoneMissing() to check if there is genotype with missingness. then one can decide
-if the default behaviour of this function is desired. Alternatively, user can use vector<int> as the input
-type as noted in the other overloading function.
+     * @note  use isNoneMissing() to check if all genotypes are with no missingness. Alternatively, one can
+     * use vector<int> as the input type as noted in the other overloading function getGenotypes().
      * */
     template<typename T>
     isValidGT<T> getGenotypes(T & v)
@@ -481,7 +480,7 @@ type as noted in the other overloading function.
     }
 
     /**
-     * @brief fill in the input vector with genotyps, 0, 1 or -9 (missing).
+     * @brief fill in the input vector with genotype values, 0, 1 or -9 (missing).
      * @param v valid input is vector<int> type
      * @return bool
      * @note this function provides full capability to handl all kinds of genotypes in multi-ploidy data with
@@ -491,7 +490,9 @@ type as noted in the other overloading function.
     {
         ndst = 0;
         ret = bcf_get_genotypes(header.hdr, line, &gts, &ndst);
-        if(ret <= 0) throw std::runtime_error("genotypes not present. make sure you initilized the variant object first\n");
+        if(ret <= 0)
+            throw std::runtime_error(
+                "genotypes not present. make sure you initilized the variant object first\n");
         v.resize(ret);
         isGenoMissing.assign(nsamples, 0);
         nploidy = ret / nsamples;
@@ -728,7 +729,7 @@ type as noted in the other overloading function.
             return true;
     }
 
-    /** remove the given tag from INFO of the variant*/
+    /// remove the given tag from INFO of the variant
     void removeINFO(std::string tag)
     {
         ret = -1;
@@ -784,8 +785,8 @@ type as noted in the other overloading function.
         assert((int)v.size() == nsamples);
         gtPhase = v;
     }
-    
-    /** remove the given tag from FORMAT of the variant*/
+
+    /// remove the given tag from FORMAT of the variant
     void removeFORMAT(std::string tag)
     {
         ret = -1;
@@ -1207,12 +1208,6 @@ type as noted in the other overloading function.
         nploidy = v;
     }
 
-    /// return the shape of current tag in FORMAT (nsamples x nvalues)
-    inline std::tuple<int, int> shapeOfQuery() const
-    {
-        return std::make_tuple(nsamples, nvalues);
-    }
-
     /**
      * @brief vector of nsamples length. keep track of the type of genotype (one of GT_HOM_RR, GT_HET_RA,
      *        GT_HOM_AA, GT_HET_AA, GT_HAPL_R, GT_HAPL_A or GT_UNKN).
@@ -1232,8 +1227,7 @@ type as noted in the other overloading function.
 
 /**
  * @class BcfReader
- * @brief Stream in variants from vcf/bcf file or stdin
- * @note  nothing important
+ * @brief Stream in variants from compressed/uncompressed VCF/BCF file or stdin
  **/
 class BcfReader
 {
@@ -1429,8 +1423,7 @@ class BcfReader
 
 /**
  * @class BcfWriter
- * @brief Stream out variants to vcf/bcf file or stdout
- * @note  nothing important
+ * @brief Stream out variants to compressed/uncompressed VCF/BCF file or stdout
  **/
 class BcfWriter
 {
