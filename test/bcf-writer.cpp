@@ -50,3 +50,14 @@ TEST_CASE("Write VCF by copying header from another VCF", "[bcf-writer]")
     br.getNextVariant(v);
     bw.writeRecord(v);
 }
+
+TEST_CASE("init header twice", "[bcf-writer]")
+{
+    BcfReader br("test-vcf-read.vcf");
+    BcfRecord v(br.header);
+    BcfWriter bw("test.vcf", "VCF4.3");
+    bw.initalHeader(br.header);
+    bw.writeHeader();
+    br.getNextVariant(v);
+    bw.writeRecord(v);
+}
