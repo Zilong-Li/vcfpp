@@ -5,8 +5,7 @@
 using namespace std;
 using namespace vcfpp;
 
-
-int main(int argc, char* argv[])
+int main(int argc, char * argv[])
 {
     // ========= helper message and parameters parsing ============================
     std::vector<std::string> args(argv + 1, argv + argc);
@@ -27,31 +26,29 @@ int main(int argc, char* argv[])
                   << std::endl;
         return 1;
     }
-    std::string invcf, outvcf="-", samples = "-", region = "";
+    std::string invcf, outvcf = "-", samples = "-", region = "";
     for(size_t i = 0; i < args.size(); i++)
     {
-        if (args[i] == "-i")
-            invcf = args[++i];
-        if (args[i] == "-o")
-            outvcf = args[++i];
-        if (args[i] == "-s")
-            samples = args[++i];
-        if (args[i] == "-r")
-            region = args[++i];
+        if(args[i] == "-i") invcf = args[++i];
+        if(args[i] == "-o") outvcf = args[++i];
+        if(args[i] == "-s") samples = args[++i];
+        if(args[i] == "-r") region = args[++i];
     }
     // ========= core calculation part ===========================================
     BcfReader vcf(invcf, region, samples);
     BcfRecord var(vcf.header);
     BcfWriter bw(outvcf, vcf.header);
     int64_t pos{-1}, count{0};
-    if (vcf.getNextVariant(var))
+    std::string chr;
+    if(vcf.getNextVariant(var))
     {
         pos = var.POS();
+        chr = var.CHROM();
         bw.writeRecord(var);
     }
-    while (vcf.getNextVariant(var))
+    while(vcf.getNextVariant(var))
     {
-        if (var.POS() <= pos + count)
+        if(chr == var.CHROM() && var.POS() <= pos + count)
         {
             count++; // skip it
         }
