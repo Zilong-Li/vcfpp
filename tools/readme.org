@@ -24,16 +24,20 @@ make -j4 VCFPP=/path/to/vcfpp HTSINC=/path/to/htslib/header HTSLIB=/path/to/htsl
 
 * Create DS tag for diploid samples given GP or GT tag
 
-[[dosage.cpp]]
+[[vcf_addDS.cpp]]
 
 * Swap REF and ALT and flip corresponding genotypes
 
-[[flipGT.cpp]]
+[[vcf_flipGT.cpp]]
 
-* Increment POS for duplicated biallelics SNPs
+* Increment POS for duplicated sites
 
-[[increaseDupPos.cpp]]
+[[vcf_dupPos.cpp]]
+
+* Remove sites with duplicated POS
+
+[[vcf_rmdupPos.cpp]]
 
 * Report multiallelics
 
-[[multiallelics.cpp]]
+[[vcf_multiallelics.cpp]]

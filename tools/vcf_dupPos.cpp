@@ -1,4 +1,4 @@
-// -*- compile-command: "g++ increaseDupPos.cpp -std=c++11 -g -O3 -Wall -lhts" -*-
+// -*- compile-command: "g++ vcf_dupPos.cpp -std=c++11 -g -O3 -Wall -lhts" -*-
 #include "vcfpp.h"
 
 using namespace std;
@@ -13,7 +13,7 @@ int main(int argc, char* argv[])
     {
         std::cout << "Author: Zilong-Li (zilong.dk@gmail.com)\n"
                   << "Description:\n"
-                  << "     increment POS for duplicated biallelics sites from sorted vcf\n\n"
+                  << "     increment POS of duplicated sites from indexed vcf\n\n"
                   << "Usage example:\n"
                   << "     " + (std::string)argv[0] + " -i in.bcf \n"
                   << "     " + (std::string)argv[0] + " -i in.bcf -o out.bcf -s ^S1,S2 -r chr1:1-1000 \n"
