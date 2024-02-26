@@ -2,7 +2,7 @@
  * @file        https://github.com/Zilong-Li/vcfpp/vcfpp.h
  * @author      Zilong Li
  * @email       zilong.dk@gmail.com
- * @version     v0.3.3
+ * @version     v0.3.4
  * @breif       a single C++ file for manipulating VCF
  * Copyright (C) 2022-2023.The use of this code is governed by the LICENSE file.
  ******************************************************************************/
@@ -1118,7 +1118,7 @@ class BcfRecord
     }
 
     /** @brief return raw INFO column as string. recommend to use getINFO for specific tag. */
-    inline std::string INFO()
+    inline std::string allINFO()
     {
         int32_t max_dt_id = header.hdr->n[BCF_DT_ID];
         kstring_t * s = (kstring_t *)calloc(1, sizeof(kstring_t));

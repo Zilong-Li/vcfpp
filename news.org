@@ -1,5 +1,7 @@
 #+title: News and Changes
 
+* v0.3.4
+- rename BcfRecord::INFO as BcfRecord::allINFO
 * v0.2.0
 - major release
 * v0.1.8
