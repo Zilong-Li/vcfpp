@@ -1,6 +1,7 @@
 # detect OS architecture and add flags
 CXX      = g++
-CXXFLAGS = -std=c++11 -g -Wall -fsanitize=address
+# CXXFLAGS = -std=c++11 -Wall -g -fsanitize=address
+CXXFLAGS = -std=c++11 -Wall
 HTSINC   = /usr/local/include
 HTSLIB   = /usr/local/lib
 LDFLAGS  =  -L$(HTSLIB) -Wl,-rpath,$(HTSLIB)

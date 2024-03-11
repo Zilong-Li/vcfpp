@@ -1460,7 +1460,6 @@ class BcfWriter
     std::shared_ptr<htsFile> fp; // hts file
     std::shared_ptr<bcf1_t> b = std::shared_ptr<bcf1_t>(bcf_init(), variant_close()); // variant
     int ret;
-    kstring_t s = {0, 0, NULL}; // kstring
     bool isHeaderWritten = false;
 
   public:
@@ -1579,11 +1578,9 @@ class BcfWriter
     void writeLine(const std::string & vcfline)
     {
         if(!isHeaderWritten && !writeHeader()) throw std::runtime_error("could not write header\n");
-        std::vector<char> line(vcfline.begin(), vcfline.end());
-        line.push_back('\0'); // don't forget string has no \0;
-        s.s = &line[0];
-        s.l = vcfline.length();
-        s.m = vcfline.length();
+        std::vector<char> str(vcfline.begin(), vcfline.end());
+        str.push_back('\0'); // don't forget string has no \0;
+        kstring_t s = {vcfline.length(), vcfline.length(), &str[0]}; // kstring
         ret = vcf_parse(&s, header.hdr, b.get());
         if(ret > 0) throw std::runtime_error("error parsing: " + vcfline + "\n");
         if(b->errcode == BCF_ERR_CTG_UNDEF)
