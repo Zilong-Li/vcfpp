@@ -2,7 +2,7 @@
  * @file        https://github.com/Zilong-Li/vcfpp/vcfpp.h
  * @author      Zilong Li
  * @email       zilong.dk@gmail.com
- * @version     v0.3.4
+ * @version     v0.3.6
  * @breif       a single C++ file for manipulating VCF
  * Copyright (C) 2022-2023.The use of this code is governed by the LICENSE file.
  ******************************************************************************/
@@ -876,10 +876,10 @@ class BcfRecord
     /** @brief add one variant record from given string*/
     void addLineFromString(const std::string & vcfline)
     {
-        std::vector<char> str(vcfline.begin(), vcfline.end());
-        str.push_back('\0'); // don't forget string has no \0;
-        kstring_t s = {vcfline.length(), vcfline.length(), &str[0]}; // kstring
-        ret = vcf_parse(&s, header.hdr, line.get());
+        kstring_t s = {0, 0, NULL};
+        kputsn(vcfline.c_str(), vcfline.length(), &s);
+        ret = vcf_parse1(&s, header.hdr, line.get());
+        free(s.s);
         if(ret > 0) throw std::runtime_error("error parsing: " + vcfline + "\n");
         if(line->errcode == BCF_ERR_CTG_UNDEF)
         {
@@ -892,7 +892,6 @@ class BcfRecord
             if(ret < 0) throw std::runtime_error("error adding contig " + contig + " to header.\n");
             ret = bcf_hdr_sync(header.hdr);
         }
-        free(s.s);
     }
 
     /** @brief if all samples have non missing values for the tag in FORMAT */
@@ -1434,7 +1433,7 @@ class BcfReader
                 int slen = tbx_itr_next(fp.get(), tidx, itr, &s);
                 if(slen > 0)
                 {
-                    ret = vcf_parse(&s, r.header.hdr, r.line.get()); // ret > 0, error
+                    ret = vcf_parse1(&s, r.header.hdr, r.line.get()); // ret > 0, error
                     bcf_unpack(r.line.get(), BCF_UN_ALL);
                 }
                 return (ret <= 0) && (slen > 0);
@@ -1574,14 +1573,14 @@ class BcfWriter
         if(header.hdr == NULL) throw std::runtime_error("couldn't copy the header from another vcf.\n");
     }
 
-    /// write a string to a vcf line
+    /// copy a string to a vcf line
     void writeLine(const std::string & vcfline)
     {
         if(!isHeaderWritten && !writeHeader()) throw std::runtime_error("could not write header\n");
-        std::vector<char> str(vcfline.begin(), vcfline.end());
-        str.push_back('\0'); // don't forget string has no \0;
-        kstring_t s = {vcfline.length(), vcfline.length(), &str[0]}; // kstring
-        ret = vcf_parse(&s, header.hdr, b.get());
+        kstring_t s = {0, 0, NULL};
+        kputsn(vcfline.c_str(), vcfline.length(), &s);
+        ret = vcf_parse1(&s, header.hdr, b.get());
+        free(s.s);
         if(ret > 0) throw std::runtime_error("error parsing: " + vcfline + "\n");
         if(b->errcode == BCF_ERR_CTG_UNDEF)
         {
