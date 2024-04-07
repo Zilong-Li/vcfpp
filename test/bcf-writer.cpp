@@ -12,7 +12,7 @@ TEST_CASE("make a vcf from scratch", "[bcf-writer]")
     bw.header.addFORMAT("PL", "G", "Integer", "List of Phred-scaled genotype likelihoods");
     bw.header.addFORMAT("DP", "1", "Integer", "Number of high-quality bases");
     bw.header.addINFO("AF", "A", "Float", "Estimated allele frequency in the range (0,1)");
-    for (auto& s : {"S001", "S002", "S003", "S004"})
+    for(auto & s : {"S001", "S002", "S003", "S004"})
     {
         bw.header.addSample(s);
     }
@@ -31,16 +31,14 @@ TEST_CASE("Write BCF with custome header and variants", "[bcf-writer]")
     bw.close();
 }
 
-
-TEST_CASE("Write VCF by copying header from another VCF", "[bcf-writer]")
+TEST_CASE("can use header from another bcf.gz", "[bcf-writer]")
 {
-    BcfReader br("test-vcf-read.vcf");
+    BcfReader br("test-vcf-read.bcf.gz");
     BcfRecord v(br.header);
-    BcfWriter bw("test.vcf", br.header);
+    BcfWriter bw("test.bcf.gz", br.header);
     bw.writeHeader();
     br.getNextVariant(v);
     bw.writeRecord(v);
-    // bw.close();
 }
 
 TEST_CASE("init header twice", "[bcf-writer]")
@@ -52,4 +50,19 @@ TEST_CASE("init header twice", "[bcf-writer]")
     bw.writeHeader();
     br.getNextVariant(v);
     bw.writeRecord(v);
+}
+
+TEST_CASE("Write VCF by copying header of another VCF and modifying it", "[bcf-writer]")
+{
+    BcfReader br("test-vcf-read.bcf");
+    BcfRecord v(br.header);
+    br.getNextVariant(v);
+    BcfWriter bw;
+    bw.open("test-vcf-write.vcf");
+    bw.copyHeader("test-vcf-read.bcf");
+    bw.header.addINFO("AF", "A", "Float", "Estimated allele frequency in the range (0,1)");
+    v.resetHeader(bw.header);
+    v.setINFO("AF", 0.2);
+    bw.writeRecord(v);
+    bw.close();
 }

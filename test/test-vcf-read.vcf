@@ -2,6 +2,9 @@
 ##fileDate=20150126
 ##reference=hs37d5
 ##phasing=partial
+##contig=<ID=1>
+##contig=<ID=4>
+##contig=<ID=16>
 ##FILTER=<ID=INDEL_SPECIFIC_FILTERS,Description="QD < 2.0 || ReadPosRankSum < -20.0 || InbreedingCoeff < -0.8 || FS > 200.0">
 ##FILTER=<ID=LowQual,Description="Low quality">
 ##FILTER=<ID=VQSRTrancheSNP99.00to99.90,Description="Truth sensitivity tranche level for SNP model at VQS Lod: -6.6778 <= x < -0.6832">

@@ -2,7 +2,7 @@
  * @file        https://github.com/Zilong-Li/vcfpp/vcfpp.h
  * @author      Zilong Li
  * @email       zilong.dk@gmail.com
- * @version     v0.3.6
+ * @version     v0.3.7
  * @breif       a single C++ file for manipulating VCF
  * Copyright (C) 2022-2023.The use of this code is governed by the LICENSE file.
  ******************************************************************************/
@@ -116,6 +116,15 @@ inline bool isEndWith(std::string const & s, std::string const & e)
     {
         return false;
     }
+}
+
+// determinate the mode for read/write the compressed/uncompressed VCF/BCF
+inline std::string getMode(std::string const & fname, std::string mode = "r")
+{
+    if(isEndWith(fname, "bcf.gz")) mode += "b";
+    if(isEndWith(fname, "bcf")) mode += "bu";
+    if(isEndWith(fname, "vcf.gz")) mode += "z";
+    return mode;
 }
 
 // string split by separator
@@ -416,7 +425,7 @@ class BcfRecord
     /// constructor with a given BcfHeader object
     BcfRecord(BcfHeader & h)
     {
-        init(h);
+        initHeader(h);
     }
 
     ~BcfRecord()
@@ -425,14 +434,20 @@ class BcfRecord
         if(hdr_d) bcf_hdr_destroy(hdr_d);
     }
 
-    /// initilize a BcfRecord object by pointing to another BcfHeader object
-    void init(BcfHeader & h)
+    /// initilize the header associated with BcfRecord object by pointing to another BcfHeader object
+    void initHeader(BcfHeader & h)
     {
         header = &h;
         if(!header->hdr) throw std::runtime_error("please initial header first\n");
         nsamples = header->nSamples();
         typeOfGT.resize(nsamples);
         gtPhase.resize(nsamples, 0);
+    }
+
+    /// reset the header associated with BcfRecord object by pointing to another BcfHeader object
+    void resetHeader(BcfHeader & h)
+    {
+        header = &h;
     }
 
     /** @brief stream out the variant */
@@ -1369,15 +1384,6 @@ class BcfReader
         SamplesName = header.getSamples();
     }
 
-    /// return if the file is opened successfully
-    bool isOpen() const
-    {
-        if(fp != NULL)
-            return true;
-        else
-            return false;
-    }
-
     /** @brief set the number of threads to use */
     inline int setThreads(int n)
     {
@@ -1562,10 +1568,7 @@ class BcfWriter
      */
     void open(const std::string & fname)
     {
-        std::string mode{"w"};
-        if(isEndWith(fname, "bcf.gz")) mode += "b";
-        if(isEndWith(fname, "bcf")) mode += "bu";
-        if(isEndWith(fname, "vcf.gz")) mode += "z";
+        auto mode = getMode(fname, "w");
         fp = std::shared_ptr<htsFile>(hts_open(fname.c_str(), mode.c_str()), htsFile_close());
     }
 
@@ -1602,6 +1605,15 @@ class BcfWriter
     void initalHeader(const BcfHeader & h)
     {
         hp = &h;
+    }
+
+    /// copy header of given VCF
+    void copyHeader(const std::string & vcffile)
+    {
+        htsFile * fp2 = hts_open(vcffile.c_str(), "r");
+        header.hdr = bcf_hdr_read(fp2);
+        hts_close(fp2);
+        initalHeader(header);
     }
 
     /// copy a string to a vcf line
