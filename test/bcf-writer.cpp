@@ -22,7 +22,7 @@ TEST_CASE("make a vcf from scratch", "[bcf-writer]")
 
 TEST_CASE("Write BCF with custome header and variants", "[bcf-writer]")
 {
-    BcfWriter bw("test.bcf");
+    BcfWriter bw("test.vcf.gz");
     bw.header.addFORMAT("GT", "1", "String", "Genotype");
     bw.header.addINFO("AF", "A", "Float", "Estimated allele frequency in the range (0,1)");
     bw.header.addContig("chr20");
@@ -40,6 +40,7 @@ TEST_CASE("Write VCF by copying header from another VCF", "[bcf-writer]")
     bw.writeHeader();
     br.getNextVariant(v);
     bw.writeRecord(v);
+    // bw.close();
 }
 
 TEST_CASE("init header twice", "[bcf-writer]")
