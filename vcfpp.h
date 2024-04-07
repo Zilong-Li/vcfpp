@@ -157,7 +157,6 @@ struct variant_close
     }
 };
 
-
 // deleter for bcf header
 struct bcf_hdr_close
 {
@@ -166,7 +165,7 @@ struct bcf_hdr_close
         if(x) bcf_hdr_destroy(x);
     }
 };
-    
+
 /**
  * @class BcfHeader
  * @brief Object represents header of the VCF, offering methods to access and modify the tags
@@ -394,9 +393,9 @@ class BcfRecord
     friend class BcfWriter;
 
   private:
-    BcfHeader* header;
+    BcfHeader * header;
     std::shared_ptr<bcf1_t> line = std::shared_ptr<bcf1_t>(bcf_init(), variant_close()); // variant
-    bcf_hdr_t * hdr_d; // a dup header by bcf_hdr_dup(header->hdr)
+    bcf_hdr_t * hdr_d = NULL; // a dup header by bcf_hdr_dup(header->hdr)
     bcf_fmt_t * fmt = NULL;
     bcf_info_t * info = NULL;
     int32_t * gts = NULL;
@@ -420,7 +419,11 @@ class BcfRecord
         init(h);
     }
 
-    ~BcfRecord() {}
+    ~BcfRecord()
+    {
+        if(gts) free(gts);
+        if(hdr_d) bcf_hdr_destroy(hdr_d);
+    }
 
     /// initilize a BcfRecord object by pointing to another BcfHeader object
     void init(BcfHeader & h)
@@ -601,6 +604,7 @@ class BcfRecord
         }
         else
         {
+            free(dst);
             throw std::runtime_error("failed to parse the " + tag + " format of this variant.\n");
         }
     }
@@ -634,6 +638,7 @@ class BcfRecord
         }
         else
         {
+            free(dst);
             throw std::runtime_error("couldn't parse the " + tag + " format of this variant.\n");
         }
     }
@@ -661,10 +666,15 @@ class BcfRecord
             ret = bcf_get_info_float(header->hdr, line.get(), tag.c_str(), &dst, &ndst);
         }
         if(ret >= 0)
+        {
             v = std::vector<S>(dst, dst + ret); // user have to check if there is missing in the return v;
+            free(dst);
+        }
         else
+        {
+            free(dst);
             throw std::runtime_error("couldn't parse the " + tag + " format of this variant.\n");
-        free(dst);
+        }
         return true;
     }
 
@@ -798,22 +808,26 @@ class BcfRecord
         // bcf_gt_type
         int i, j, k;
         nploidy = v.size() / nsamples;
-        gts = (int32_t *)malloc(v.size() * sizeof(int32_t));
+        int32_t * gt = (int32_t *)malloc(v.size() * sizeof(int32_t));
         for(i = 0; i < nsamples; i++)
         {
             for(j = 0; j < nploidy; j++)
             {
                 k = i * nploidy + j;
                 if(v[k] == -9 || v[k] == bcf_int32_missing)
-                    gts[k] = bcf_gt_missing;
+                    gt[k] = bcf_gt_missing;
                 else if(gtPhase[i])
-                    gts[k] = bcf_gt_phased(v[k]);
+                    gt[k] = bcf_gt_phased(v[k]);
                 else
-                    gts[k] = bcf_gt_unphased(v[k]);
+                    gt[k] = bcf_gt_unphased(v[k]);
             }
         }
-        if(bcf_update_genotypes(header->hdr, line.get(), gts, v.size()) < 0)
+        if(bcf_update_genotypes(header->hdr, line.get(), gt, v.size()) < 0)
+        {
+            free(gt);
             throw std::runtime_error("couldn't set genotypes correctly.\n");
+        }
+        free(gt);
         return true;
     }
 
@@ -1276,7 +1290,7 @@ class BcfReader
     std::shared_ptr<htsFile> fp; // hts file
     hts_idx_t * hidx = NULL; // hts index file
     tbx_t * tidx = NULL; // .tbi .csi index file for vcf files
-    hts_itr_t * itr = NULL; // hts records iterator
+    hts_itr_t * itr = NULL; // tabix iterator
     kstring_t s = {0, 0, NULL}; // kstring
     std::string fname;
     bool isBcf; // if the input file is bcf or vcf;
@@ -1330,10 +1344,19 @@ class BcfReader
         if(!samples.empty()) setSamples(samples);
     }
 
-    /// return a BcfHeader object
-    const BcfHeader & getHeader() const
+    ~BcfReader()
     {
-        return header;
+        close();
+    }
+
+    /// close the BcfReader object.
+    void close()
+    {
+        if(fp) fp.reset();
+        if(itr) hts_itr_destroy(itr);
+        if(hidx) hts_idx_destroy(hidx);
+        if(tidx) tbx_destroy(tidx);
+        if(s.s) free(s.s);
     }
 
     /// open a VCF/BCF/STDIN file for streaming in
@@ -1355,20 +1378,16 @@ class BcfReader
             return false;
     }
 
-    /// close the BcfReader object.
-    void close()
-    {
-        free(s.s);
-        if(fp) fp.reset();
-        if(itr) hts_itr_destroy(itr);
-    }
-
-    ~BcfReader() {}
-
     /** @brief set the number of threads to use */
     inline int setThreads(int n)
     {
         return hts_set_threads(fp.get(), n);
+    }
+
+    /// return a BcfHeader object
+    const BcfHeader & getHeader() const
+    {
+        return header;
     }
 
     /** @brief get the number of records of given region */

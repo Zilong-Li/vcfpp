@@ -64,26 +64,6 @@ TEST_CASE("parse vcf with missing genotypes diploid - vector<int>", "[bcf-reader
     REQUIRE(n == 1);
 }
 
-TEST_CASE("parse vcf with multialleles - vector<int>", "[bcf-reader]")
-{
-    string vcffile{"test-multialleles.vcf.gz"};
-    BcfWriter bw(vcffile, "VCF4.2");
-    bw.header.addContig("chr20"); 
-    bw.header.addINFO("AF", "A", "Float", "Estimated allele frequency in the range (0,1)");
-    bw.header.addFORMAT("GT", "1", "String", "Genotype");
-    for(auto & s : {"id01", "id02", "id03"}) bw.header.addSample(s); // add 3 samples
-    bw.writeLine("chr20\t2006060\trs146931526\tG\tA,T\t100\tPASS\tAF=0.02\tGT\t1|2\t1|1\t0|2");
-    bw.close();
-    BcfReader br("test-multialleles.vcf.gz");
-    BcfRecord var(br.header);
-    vector<int> gt;
-    while(br.getNextVariant(var))
-    {
-        var.getGenotypes(gt);
-        for(auto g : gt) cout << g << endl;
-    }
-}
-
 TEST_CASE("parse PL in vcf - vector<int>", "[bcf-reader]")
 {
     string vcffile{"test-GL.vcf.gz"};
@@ -98,11 +78,9 @@ TEST_CASE("parse PL in vcf - vector<int>", "[bcf-reader]")
     BcfReader br(vcffile);
     BcfRecord var(br.header);
     vector<int> pl;
-    while(br.getNextVariant(var))
-    {
-        var.getFORMAT("PL",pl);
-        for(auto g : pl) cout << g << endl;
-    }
+    REQUIRE(br.getNextVariant(var)==true);
+    var.getFORMAT("PL",pl);
+    for(auto g : pl) cout << g << endl;
 }
 
 TEST_CASE("parse GL in vcf - vector<float>", "[bcf-reader]")
@@ -119,9 +97,28 @@ TEST_CASE("parse GL in vcf - vector<float>", "[bcf-reader]")
     BcfReader br(vcffile);
     BcfRecord var(br.header);
     vector<float> gl;
-    while(br.getNextVariant(var))
-    {
-        var.getFORMAT("GL",gl);
-        for(auto g : gl) cout << g << endl;
-    }
+    REQUIRE(br.getNextVariant(var)==true);
+    var.getFORMAT("GL",gl);
+    for(auto g : gl) cout << g << endl;
+}
+
+TEST_CASE("parse vcf with multialleles - vector<int>", "[bcf-reader]")
+{
+    string vcffile{"test-multialleles.vcf.gz"};
+    BcfWriter bw(vcffile, "VCF4.2");
+    bw.header.addContig("chr20"); 
+    bw.header.addINFO("AF", "A", "Float", "Estimated allele frequency in the range (0,1)");
+    bw.header.addFORMAT("GT", "1", "String", "Genotype");
+    for(auto & s : {"id01", "id02", "id03"}) bw.header.addSample(s); // add 3 samples
+    string l1 = "chr20\t2006060\trs146931526\tG\tA,T\t100\tPASS\tAF=0.02\tGT\t1|2\t1|1\t0|2";
+    bw.writeLine(l1);
+    bw.close();
+    BcfReader br("test-multialleles.vcf.gz");
+    BcfRecord var(br.header);
+    vector<int> gt;
+    REQUIRE(br.getNextVariant(var)==true);
+    auto l2 = var.asString();
+    REQUIRE(l2 == l1 + "\n");
+    var.getGenotypes(gt);
+    for(auto g : gt) cout << g << endl;
 }

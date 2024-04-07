@@ -3,9 +3,9 @@ HTSLIB   = /usr/local/lib
 # detect OS architecture and add flags
 CXX      = g++
 CXXFLAGS = -std=c++11 -Wall -fsanitize=address
-# CXXFLAGS = -std=c++11 -Wall
+# CXXFLAGS = -std=c++11 -Wall -g
 LDFLAGS  =  -L$(HTSLIB) -Wl,-rpath,$(HTSLIB)
-LIBS     = -lhts -lz -lm -lbz2 -llzma -lcurl -lpthread
+LIBS     = -lhts
 INC      = -I. -I.. -I${HTSINC}
 
 OBJS = test-main.o bcf-variant.o bcf-reader.o bcf-writer.o example.o
