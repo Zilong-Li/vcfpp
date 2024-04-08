@@ -122,3 +122,23 @@ TEST_CASE("parse vcf with multialleles - vector<int>", "[bcf-reader]")
     var.getGenotypes(gt);
     for(auto g : gt) cout << g << endl;
 }
+
+TEST_CASE("parse EV in vcf - vector<string>", "[bcf-reader]")
+{
+    string vcffile{"test-GL.vcf.gz"};
+    BcfWriter bw(vcffile, "VCF4.2");
+    bw.header.addContig("chr20"); 
+    bw.header.addINFO("AF", "A", "Float", "Estimated allele frequency in the range (0,1)");
+    bw.header.addFORMAT("GT", "1", "String", "Genotype");
+    bw.header.addFORMAT("EV", "G", "String", "Classes of evidence supporting final genotype");
+    for(auto & s : {"id01", "id02"}) bw.header.addSample(s); // add 3 samples
+    bw.writeLine("chr20\t2006060\trs146931526\tG\tA\t100\tPASS\tAF=0.02\tGT:EV\t0/1:RD\t1/1:SR,PE");
+    bw.close();
+    BcfReader br(vcffile);
+    BcfRecord var(br.header);
+    vector<string> ev;
+    REQUIRE(br.getNextVariant(var)==true);
+    var.getFORMAT("EV",ev);
+    REQUIRE(ev[0]=="RD");
+    REQUIRE(ev[1]=="SR,PE");
+}

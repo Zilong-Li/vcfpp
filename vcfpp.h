@@ -2,7 +2,7 @@
  * @file        https://github.com/Zilong-Li/vcfpp/vcfpp.h
  * @author      Zilong Li
  * @email       zilong.dk@gmail.com
- * @version     v0.3.7
+ * @version     v0.3.8
  * @breif       a single C++ file for manipulating VCF
  * Copyright (C) 2022-2023.The use of this code is governed by the LICENSE file.
  ******************************************************************************/
@@ -648,12 +648,12 @@ class BcfRecord
                 // Ugly: GT field is considered to be a string by the VCF header but BCF represents it as INT.
                 v.emplace_back(dst[i]);
             };
-            free(dst);
+            free(dst[0]); free(dst);
             return true;
         }
         else
         {
-            free(dst);
+            free(dst[0]); free(dst);
             throw std::runtime_error("couldn't parse the " + tag + " format of this variant.\n");
         }
     }
