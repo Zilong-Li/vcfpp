@@ -23,5 +23,8 @@ jobs:
     - name: test
       run: |
         cd test
+        export LIBRARY_PATH="${LIBRARY_PATH}:$(brew --prefix)/lib"
+        export C_INCLUDE_PATH="${C_INCLUDE_PATH}:$(brew --prefix)/include"
+        export CPPFLAGS="-I"$(brew --prefix)/include
         make
         make test

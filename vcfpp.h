@@ -79,7 +79,7 @@ using isScalar = typename std::enable_if<std::is_same<T, int>::value || std::is_
                                          bool>::type;
 
 template<typename T>
-using isString = typename std::enable_if<std::is_same<T, std::string>::value, void>::type;
+using isString = typename std::enable_if<std::is_same<T, std::string>::value, bool>::type;
 
 template<typename T>
 using isValidGT = typename std::enable_if<std::is_same<T, std::vector<bool>>::value
@@ -559,8 +559,8 @@ class BcfRecord
      * @brief fill in the input vector with genotype values, 0, 1 or -9 (missing).
      * @param v valid input is vector<int> type
      * @return bool
-     * @note this function provides full capability to handl all kinds of genotypes in multi-ploidy data with
-     * the cost of more spae than the other function. missing allele is set as -9.
+     * @note this function provides full capability to handle all kinds of genotypes
+     * in multi-ploidy data costing more spae than the other function. missing allele is set as -9.
      * */
     bool getGenotypes(std::vector<int> & v)
     {
@@ -624,8 +624,7 @@ class BcfRecord
         fmt = bcf_get_fmt(header->hdr, line.get(), tag.c_str());
         if(!fmt)
         {
-            std::cerr << "no " + tag + " presents in FORMAT for current site\n";
-            return false;
+            throw std::invalid_argument("no FORMAT=" + tag + " in the VCF header.\n");
         }
         nvalues = fmt->n;
         ndst = 0;
@@ -658,7 +657,7 @@ class BcfRecord
         else
         {
             free(dst);
-            throw std::runtime_error("can not find the type of " + tag + " in the header file.\n");
+            return false;
         }
     }
 
@@ -673,8 +672,7 @@ class BcfRecord
         fmt = bcf_get_fmt(header->hdr, line.get(), tag.c_str());
         if(!fmt)
         {
-            std::cerr << "no " + tag + " presents in FORMAT for current site\n";
-            return false;
+            throw std::invalid_argument("no FORMAT=" + tag + " in the VCF header.\n");
         }
         nvalues = fmt->n;
         // if ndst < (fmt->n+1)*nsmpl; then realloc is involved
@@ -698,7 +696,7 @@ class BcfRecord
         {
             free(dst[0]);
             free(dst);
-            throw std::runtime_error("couldn't parse the " + tag + " FORMAT of this variant.\n");
+            return false;
         }
     }
 
@@ -714,8 +712,7 @@ class BcfRecord
         info = bcf_get_info(header->hdr, line.get(), tag.c_str());
         if(!info)
         {
-            std::cerr << "no " + tag + " presents in INFO for current site\n";
-            return false;
+            throw std::invalid_argument("no INFO=" + tag + " in the VCF header.\n");
         }
         S * dst = NULL;
         ndst = 0;
@@ -737,7 +734,7 @@ class BcfRecord
         else
         {
             free(dst);
-            throw std::runtime_error("couldn't parse the " + tag + " format of this variant.\n");
+            return false;
         }
     }
 
@@ -753,8 +750,7 @@ class BcfRecord
         info = bcf_get_info(header->hdr, line.get(), tag.c_str());
         if(!info)
         {
-            std::cerr << "no " + tag + " presents in INFO for current site\n";
-            return false;
+            throw std::invalid_argument("no INFO=" + tag + " in the VCF header.\n");
         }
         // scalar value
         if(info->len == 1)
@@ -771,8 +767,8 @@ class BcfRecord
         }
         else
         {
-            std::cerr << "there are multiple values for " + tag + " in INFO for current site\n"
-                      << "please feed a vector instead\n";
+            std::cerr << "there are multiple values for " + tag
+                             + " in INFO for current site. please use vector instead\n";
             return false;
         }
     }
@@ -789,18 +785,17 @@ class BcfRecord
         info = bcf_get_info(header->hdr, line.get(), tag.c_str());
         if(!info)
         {
-            std::cerr << "no " + tag + " presents in INFO for current site\n";
-            return false;
+            throw std::invalid_argument("no INFO=" + tag + " in the VCF header.\n");
         }
         if(info->type == BCF_BT_CHAR)
         {
             v = std::string(reinterpret_cast<char *>(info->vptr), info->vptr_len);
+            return true;
         }
         else
         {
-            throw std::runtime_error(tag + " has to be of string type\n");
+            return false;
         }
-        return true;
     }
 
     /**
@@ -812,7 +807,6 @@ class BcfRecord
     template<typename T>
     isScalar<T> setINFO(std::string tag, const T & v)
     {
-        ret = -1;
         // bcf_hrec_set_val
         // bcf_update_info_flag(header.hdr, line, tag.c_str(), NULL, 1);
         int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
@@ -825,9 +819,13 @@ class BcfRecord
             float v2 = static_cast<float>(v);
             ret = bcf_update_info_float(header->hdr, line.get(), tag.c_str(), &v2, 1);
         }
+        else
+        {
+            ret = -1;
+        }
         if(ret < 0)
         {
-            std::cerr << "couldn't set " + tag + " for this variant.\nplease add the tag in header first.\n";
+            std::cerr << "couldn't set " + tag + " for this variant.\nplease add the tag in headerfirst.\n";
             return false;
         }
         return true;
@@ -837,12 +835,11 @@ class BcfRecord
      * @brief set tag value for INFO
      * @param tag valid tag name in INFO column declared in the VCF header
      * @param v valid input include vector<int> vector<float> std::string
-     * @return boolean
+     * @return bool
      * */
     template<typename T>
     isValidInfo<T> setINFO(std::string tag, const T & v)
     {
-        ret = -1;
         // bcf_update_info_flag(header.hdr, line, tag.c_str(), NULL, 1);
         int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
         if(bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_INT & 0xff))
@@ -857,10 +854,14 @@ class BcfRecord
         {
             ret = bcf_update_info_string(header->hdr, line.get(), tag.c_str(), v.data());
         }
+        else
+        {
+            ret = -1;
+        }
 
         if(ret < 0)
         {
-            std::cerr << "couldn't set " + tag + " for this variant.\nplease add the tag in header first.\n";
+            std::cerr << "couldn't set " + tag + " for this variant.\nplease add the tag in headerfirst.\n";
             return false;
         }
         return true;
@@ -869,7 +870,6 @@ class BcfRecord
     /// remove the given tag from INFO of the variant
     void removeINFO(std::string tag)
     {
-        ret = -1;
         int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
         if(bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_INT & 0xff))
         {
@@ -882,6 +882,10 @@ class BcfRecord
         else if(bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_STR & 0xff))
         {
             ret = bcf_update_info_string(header->hdr, line.get(), tag.c_str(), NULL);
+        }
+        else
+        {
+            ret = -1;
         }
 
         if(ret < 0)
@@ -970,7 +974,6 @@ class BcfRecord
     template<typename T>
     isValidFMT<T> setFORMAT(std::string tag, const T & v)
     {
-        ret = -1;
         int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
         if(bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_INT & 0xff))
         {
@@ -984,10 +987,14 @@ class BcfRecord
         {
             ret = bcf_update_format_float(header->hdr, line.get(), tag.c_str(), v.data(), v.size());
         }
+        else
+        {
+            ret = -1;
+        }
 
         if(ret < 0)
         {
-            std::cerr << "couldn't set format " + tag + " correctly.\n";
+            std::cerr << "couldn't set format " + tag + " corectly.\n";
             return false;
         }
         return true;
@@ -998,12 +1005,11 @@ class BcfRecord
      * one sample in the vcf
      * @param tag valid tag name in FORMAT column declared in the VCF header
      * @param v valid input include int, float or double
-     * @return bool
+     * @return void
      * */
     template<typename T>
     isScalar<T> setFORMAT(std::string tag, const T & v)
     {
-        ret = -1;
         float v2 = v;
         int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
         if(bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_INT & 0xff))
@@ -1014,10 +1020,13 @@ class BcfRecord
         {
             ret = bcf_update_format_float(header->hdr, line.get(), tag.c_str(), &v2, 1);
         }
-
+        else
+        {
+            ret = -1;
+        }
         if(ret < 0)
         {
-            std::cerr << "couldn't set format " + tag + " correctly.\n";
+            std::cerr << "couldn't set format " + tag + " corectly.\n";
             return false;
         }
         return true;
