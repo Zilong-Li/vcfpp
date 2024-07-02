@@ -2,7 +2,7 @@
  * @file        https://github.com/Zilong-Li/vcfpp/vcfpp.h
  * @author      Zilong Li
  * @email       zilong.dk@gmail.com
- * @version     v0.3.9
+ * @version     v0.4.0
  * @breif       a single C++ file for manipulating VCF
  * Copyright (C) 2022-2023.The use of this code is governed by the LICENSE file.
  ******************************************************************************/
@@ -497,7 +497,9 @@ class BcfRecord
         ret = bcf_get_genotypes(header->hdr, line.get(), &gts, &ndst);
         if(ret <= 0)
         {
+#    if defined(VERBOSE)
             std::cerr << "GT not present for current site. did you initilize the variant object?\n";
+#    endif
             return false;
         }
         // if nploidy is not set manually. find the max nploidy using the first variant (eg. 2) resize v as
@@ -568,7 +570,9 @@ class BcfRecord
         ret = bcf_get_genotypes(header->hdr, line.get(), &gts, &ndst);
         if(ret <= 0)
         {
+#    if defined(VERBOSE)
             std::cerr << "GT not present for current site. did you initilize the variant object?\n";
+#    endif
             return false;
         }
         v.resize(ret);
@@ -767,8 +771,10 @@ class BcfRecord
         }
         else
         {
+#    if defined(VERBOSE)
             std::cerr << "there are multiple values for " + tag
                              + " in INFO for current site. please use vector instead\n";
+#    endif
             return false;
         }
     }
@@ -825,7 +831,9 @@ class BcfRecord
         }
         if(ret < 0)
         {
+#    if defined(VERBOSE)
             std::cerr << "couldn't set " + tag + " for this variant.\nplease add the tag in headerfirst.\n";
+#    endif
             return false;
         }
         return true;
@@ -861,7 +869,9 @@ class BcfRecord
 
         if(ret < 0)
         {
+#    if defined(VERBOSE)
             std::cerr << "couldn't set " + tag + " for this variant.\nplease add the tag in headerfirst.\n";
+#    endif
             return false;
         }
         return true;
@@ -927,7 +937,9 @@ class BcfRecord
         if(bcf_update_genotypes(header->hdr, line.get(), gt, v.size()) < 0)
         {
             free(gt);
+#    if defined(VERBOSE)
             std::cerr << "couldn't set genotypes correctly.\n";
+#    endif
             return false;
         }
         free(gt);
@@ -994,7 +1006,9 @@ class BcfRecord
 
         if(ret < 0)
         {
+#    if defined(VERBOSE)
             std::cerr << "couldn't set format " + tag + " corectly.\n";
+#    endif
             return false;
         }
         return true;
@@ -1026,7 +1040,9 @@ class BcfRecord
         }
         if(ret < 0)
         {
+#    if defined(VERBOSE)
             std::cerr << "couldn't set format " + tag + " corectly.\n";
+#    endif
             return false;
         }
         return true;

@@ -2,7 +2,7 @@ name: MacOS
 
 on:
   push:
-    branches: [ main, dev ]
+    branches: [ main, doc ]
   pull_request:
     branches: [ main ]
 
@@ -23,8 +23,8 @@ jobs:
     - name: test
       run: |
         cd test
-        export LIBRARY_PATH="${LIBRARY_PATH}:$(brew --prefix)/lib"
-        export C_INCLUDE_PATH="${C_INCLUDE_PATH}:$(brew --prefix)/include"
-        export CPPFLAGS="-I"$(brew --prefix)/include
-        make
+        export LIBRARY_PATH=${LIBRARY_PATH}:$(brew --prefix)/lib
+        export C_INCLUDE_PATH=${C_INCLUDE_PATH}:$(brew --prefix)/include
+        export CPPFLAGS=-I"$(brew --prefix)/include"
+        make HTSINC=$(brew --prefix)/include HTSLIB=$(brew --prefix)/lib
         make test
