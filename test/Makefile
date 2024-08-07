@@ -2,8 +2,7 @@ HTSINC   = /usr/local/include
 HTSLIB   = /usr/local/lib
 # detect OS architecture and add flags
 CXX      = g++
-CXXFLAGS = -std=c++11 -Wall -fsanitize=address
-# CXXFLAGS = -std=c++11 -Wall -g
+CXXFLAGS = -std=c++11 -Wall -g -O2 -fsanitize=address
 LDFLAGS  =  -L$(HTSLIB) -Wl,-rpath,$(HTSLIB)
 LIBS     = -lhts -lz -lm -lbz2 -llzma -lcurl -lpthread
 INC      = -I. -I.. -I${HTSINC}

@@ -2,7 +2,7 @@
  * @file        https://github.com/Zilong-Li/vcfpp/vcfpp.h
  * @author      Zilong Li
  * @email       zilong.dk@gmail.com
- * @version     v0.4.0
+ * @version     v0.4.1
  * @breif       a single C++ file for manipulating VCF
  * Copyright (C) 2022-2023.The use of this code is governed by the LICENSE file.
  ******************************************************************************/
@@ -1519,6 +1519,7 @@ class BcfReader
     {
         fname = file;
         fp = std::shared_ptr<htsFile>(hts_open(file.c_str(), "r"), htsFile_close());
+        if(!fp) throw std::invalid_argument("I/O error: input file is invalid");
         header.hdr = bcf_hdr_read(fp.get());
         nsamples = bcf_hdr_nsamples(header.hdr);
         SamplesName = header.getSamples();
@@ -1710,6 +1711,7 @@ class BcfWriter
     {
         auto mode = getMode(fname, "w");
         fp = std::shared_ptr<htsFile>(hts_open(fname.c_str(), mode.c_str()), htsFile_close());
+        if(!fp) throw std::invalid_argument("I/O error: input file is invalid");
     }
 
     /**
@@ -1724,6 +1726,7 @@ class BcfWriter
     void open(const std::string & fname, const std::string & mode)
     {
         fp = std::shared_ptr<htsFile>(hts_open(fname.c_str(), mode.c_str()), htsFile_close());
+        if(!fp) throw std::invalid_argument("I/O error: input file is invalid");
     }
 
     /// close the BcfWriter object.
@@ -1751,6 +1754,7 @@ class BcfWriter
     void copyHeader(const std::string & vcffile)
     {
         htsFile * fp2 = hts_open(vcffile.c_str(), "r");
+        if(!fp2) throw std::invalid_argument("I/O error: input file is invalid");
         header.hdr = bcf_hdr_read(fp2);
         hts_close(fp2);
         initalHeader(header);

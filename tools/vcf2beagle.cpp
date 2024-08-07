@@ -50,7 +50,7 @@ int main(int argc, char * argv[])
     vector<double> out;
     while(vcf.getNextVariant(var))
     {
-        if(!var.isSNP()) continue;
+        // if(!var.isSNP()) continue;
         if(tag == "PL")
         {
             var.getFORMAT("PL", pl); // try get PL values

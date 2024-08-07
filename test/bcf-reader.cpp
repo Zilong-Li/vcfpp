@@ -142,3 +142,11 @@ TEST_CASE("parse EV in vcf - vector<string>", "[bcf-reader]")
     REQUIRE(ev[0]=="RD");
     REQUIRE(ev[1]=="SR,PE");
 }
+
+TEST_CASE("throw error when file is not valid", "[bcf-reader]")
+{
+    BcfReader br;
+    CHECK_THROWS(br.open("no-test-GL.vcf.gz"));
+    BcfReader bw;
+    CHECK_THROWS(bw.open("ff://no-access.vcf.gz"));
+}

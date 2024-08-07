@@ -6,15 +6,18 @@
 [[https://github.com/Zilong-Li/vcfpp/releases/latest][https://img.shields.io/github/v/release/Zilong-Li/vcfpp.svg]]
 [[https://img.shields.io/github/license/Zilong-Li/vcfpp?style=plastic.svg]]
 
-This project introduces vcfpp (vcf plus plus), a single C++ file as interface to the basic =htslib=, which can be easily included in a C++ program
-for scripting high-performance genomic analyses.
+This project introduces vcfpp (vcf plus plus), a single C++ file as interface to
+the basic =htslib=, which can be easily included in a C++ program for scripting
+high-performance genomic analyses. Check out [[https://github.com/Zilong-Li/vcfppR][vcfppR]] as an example of how vcfpp.h
+can facilitate rapidly writing high-performance R package.
 
 Features:
 - single file to be easily included and compiled
 - easy and safe [[https://zilongli.org/proj/vcfpp/index.html][API]] to use.
 - objects are RAII. no worry about allocate and free memory.
-- has the full functionalities of the =htslib=, eg. supports of compressed VCF/BCF and URL link as filename.
+- the full functionalities of =htslib=, e.g. supports of compressed VCF/BCF and URL link as filename.
 - compatible with C++11 and later
+
 
 * Table of Contents :TOC:QUOTE:
 #+BEGIN_QUOTE
@@ -93,7 +96,7 @@ value =-9= into account for downstream analysis.
 
 ** Writing VCF
 
-There are many ways in vcfpp for writing the VCF/BCF file.
+There are many ways for writing the VCF/BCF file.
 
 *** Use an empty template
 
@@ -110,13 +113,13 @@ for (auto& s : {"id01", "id02", "id03"}) bw.header.addSample(s); // add 3 sample
 bw.writeLine("chr20\t2006060\trs146931526\tG\tC\t100\tPASS\tAF=0.000998403\tGT\t1|0\t1|1\t0|0");
 #+end_src
 
-*** Use another VCF as template
+*** Use an existing VCF as template
 
-In this example, we first read VCF file
-=test/test-vcf-read.vcf.gz=. Secondly, we construct an empty variant record
-and update the record with the input VCF. Thirdly, we construct a
-BcfWriter object using the meta data in the header of the input VCF,
-writing out the header and the modified variant record.
+In this example, we first read VCF file =test/test-vcf-read.vcf.gz=. Second,
+we construct an empty variant record and update the record with the input
+VCF. Third, we construct a BcfWriter object using the meta data in the
+header of the input VCF, writing out the header and the modified variant
+record.
 
 #+begin_src C++
 BcfReader br("test/test-vcf-read.vcf.gz");
