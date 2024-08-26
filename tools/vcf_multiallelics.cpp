@@ -27,7 +27,7 @@ int main(int argc, char* argv[])
         return 1;
     }
     std::string invcf, outvcf="-", samples = "-", region = "";
-    for (int i = 0; i < args.size(); i++)
+    for(size_t i = 0; i < args.size(); i++)
     {
         if (args[i] == "-i")
             invcf = args[++i];

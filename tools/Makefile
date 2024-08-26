@@ -9,7 +9,7 @@ LIBS     = -lhts -lz -lm -lbz2 -llzma -lcurl -lpthread
 # OBJS     = $(patsubst %.cpp, %.o, $(wildcard *.cpp))
 BINS     = $(patsubst %.cpp, %, $(wildcard *.cpp))
 
-.PHONY: all clean
+.PHONY: all clean test
 
 all: $(BINS)
 
@@ -18,3 +18,7 @@ all: $(BINS)
 
 clean:
 	rm -f $(BINS)
+
+test:
+	./vcf_addDS -i test.vcf.gz -o out.vcf.gz
+	./vcf_addINFO -i test.vcf.gz -o out.vcf.gz

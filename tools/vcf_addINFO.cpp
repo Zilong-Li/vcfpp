@@ -1,5 +1,6 @@
-// -*- compile-command: "g++ vcf_addDS.cpp -std=c++11 -g -O3 -Wall -I.. -lhts" -*-
+// -*- compile-command: "g++ vcf_addINFO.cpp -std=c++11 -g -O3 -Wall -I.. -lhts" -*-
 #include "vcfpp.h"
+#include <cmath>
 
 using namespace std;
 using namespace vcfpp;
@@ -12,7 +13,7 @@ int main(int argc, char * argv[])
     {
         std::cout << "Author: Zilong-Li (zilong.dk@gmail.com)\n"
                   << "Description:\n"
-                  << "     create DS tag for diploid samples given GP or GT tag from input vcf file\n\n"
+                  << "     calculate INFO score per site given GP from input vcf file\n\n"
                   << "Usage example:\n"
                   << "     " + (std::string)argv[0] + " -i in.bcf \n"
                   << "     " + (std::string)argv[0] + " -i in.bcf -o out.bcf -s ^S1,S2 -r chr1:1-1000 \n"
@@ -35,29 +36,36 @@ int main(int argc, char * argv[])
     }
     // ========= core calculation part ===========================================
     BcfReader vcf(invcf, region, samples);
-    BcfWriter bw(outvcf, vcf.header);
+    BcfWriter bw(outvcf);
     bw.copyHeader(invcf);
-    bw.header.addFORMAT("DS", "1", "Float", "Diploid Genotype Dosage"); // add DS tag into the header
-    int nsamples = vcf.nsamples;
-    vector<float> gps, ds(nsamples);
-    vector<char> gts;
+    bw.header.addINFO("INFO", "1", "Float", "INFO score given genotype probability");
+    bw.header.addINFO("EAF", "1", "Float", "Estimated Allele Frequency");
+    int N = vcf.nsamples, i{0};
+    vector<float> gps;
+    float info, eaf, eij, fij, a0, a1, thetaHat;
     BcfRecord var(bw.header);
     while(vcf.getNextVariant(var))
     {
-        try
+        var.getFORMAT("GP", gps); // try get GP values
+        for(eij = 0.0, fij = 0.0, i = 0; i < N; i++)
         {
-            var.getFORMAT("GP", gps); // try get GP values
-            for(int i = 0; i < nsamples; i++)
-            {
-                ds[i] = gps[i * 3 + 1] + gps[i * 3 + 2] * 2;
-            }
+            a0 = gps[i * 3 + 1] + gps[i * 3 + 2] * 2;
+            a1 = gps[i * 3 + 1] + gps[i * 3 + 2] * 4;
+            eij += a0;
+            fij += a1 - a0 * a0;
         }
-        catch(const std::runtime_error & e)
-        {
-            var.getGenotypes(gts);
-            for(int i = 0; i < nsamples; i++) ds[i] = gts[i * 2] + gts[i * 2 + 1];
-        }
-        var.setFORMAT("DS", ds);
+        eaf = eij / 2 / N;
+        info = 1.0 - fij / (eij * (1 - eaf));
+        thetaHat = std::round(1e2 * eaf) / 1e2;
+        if(thetaHat == 0 || thetaHat == 1)
+            info = 1.0;
+        else if(info < 0)
+            info = 0.0;
+        else
+            info = std::round(1e3 * info) / 1e3;
+        eaf = std::round(1e6 * eaf) / 1e6;
+        var.setINFO("INFO", info);
+        var.setINFO("EAF", eaf);
         bw.writeRecord(var);
     }
 

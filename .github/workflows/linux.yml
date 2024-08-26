@@ -27,14 +27,20 @@ jobs:
       run: |
         git clone --recursive https://github.com/samtools/htslib.git
         cd htslib && autoreconf -i && ./configure --enable-libcurl
-        sudo make -j 4 install
+        sudo make -j6 install
         sudo ldconfig
         cd -
 
-    - name: test
+    - name: unit test
       run: |
         cd test
         # export ASAN_OPTIONS=alloc_dealloc_mismatch=0
         make
         make test
         # find . -name "*.bin" -exec '{}' --success ';'
+
+    - name: tools test
+      run: |
+        cd tools
+        make -j6
+        make test
