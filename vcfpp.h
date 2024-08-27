@@ -2,7 +2,7 @@
  * @file        https://github.com/Zilong-Li/vcfpp/vcfpp.h
  * @author      Zilong Li
  * @email       zilong.dk@gmail.com
- * @version     v0.4.1
+ * @version     v0.4.2
  * @breif       a single C++ file for manipulating VCF
  * Copyright (C) 2022-2023.The use of this code is governed by the LICENSE file.
  ******************************************************************************/
@@ -1750,12 +1750,13 @@ class BcfWriter
         hp = &h;
     }
 
-    /// copy header of given VCF
-    void copyHeader(const std::string & vcffile)
+    /// copy header of given VCF and restrict on samples
+  void copyHeader(const std::string & vcffile, std::string samples = "-")
     {
         htsFile * fp2 = hts_open(vcffile.c_str(), "r");
         if(!fp2) throw std::invalid_argument("I/O error: input file is invalid");
         header.hdr = bcf_hdr_read(fp2);
+        header.setSamples(samples);
         hts_close(fp2);
         initalHeader(header);
     }

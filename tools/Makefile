@@ -21,4 +21,6 @@ clean:
 
 test:
 	./vcf_addDS -i test.vcf.gz -o out.vcf.gz
+	./vcf_addDS -i test.vcf.gz -s Ind3,Ind1 -o out.vcf.gz
 	./vcf_addINFO -i test.vcf.gz -o out.vcf.gz
+	./vcf_addINFO -i test.vcf.gz -s Ind0,Ind2 -o out.vcf.gz
