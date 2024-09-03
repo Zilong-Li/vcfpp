@@ -2,7 +2,7 @@
  * @file        https://github.com/Zilong-Li/vcfpp/vcfpp.h
  * @author      Zilong Li
  * @email       zilong.dk@gmail.com
- * @version     v0.4.2
+ * @version     v0.5.0
  * @breif       a single C++ file for manipulating VCF
  * Copyright (C) 2022-2023.The use of this code is governed by the LICENSE file.
  ******************************************************************************/
@@ -1231,9 +1231,9 @@ class BcfRecord
     }
 
     /** @brief modify CHROM value */
-    inline void setCHR(const char * chr)
+    inline void setCHR(const std::string & s)
     {
-        line->rid = bcf_hdr_name2id(header->hdr, chr);
+        line->rid = bcf_hdr_name2id(header->hdr, s.c_str());
     }
 
     /** @brief modify position given 1-based value */
@@ -1243,15 +1243,34 @@ class BcfRecord
     }
 
     /** @brief update ID */
-    inline void setID(const char * s)
+    inline void setID(const std::string & s)
     {
-        bcf_update_id(header->hdr, line.get(), s);
+        bcf_update_id(header->hdr, line.get(), s.c_str());
     }
 
     /** @brief set REF and ALT alleles given a string seperated by comma */
-    inline void setRefAlt(const char * alleles_string)
+    inline void setRefAlt(const std::string & s)
     {
-        bcf_update_alleles_str(header->hdr, line.get(), alleles_string);
+        bcf_update_alleles_str(header->hdr, line.get(), s.c_str());
+    }
+
+    /** @brief modify the QUAL value */
+    inline void setQUAL(float q)
+    {
+        line->qual = q;
+    }
+
+    /** @brief modify the QUAL value */
+    inline void setQUAL(char q)
+    {
+        bcf_float_set_missing(line->qual);
+    }
+
+    /** @brief modify the FILTER value */
+    inline void setFILTER(const std::string & s)
+    {
+        int32_t tmpi = bcf_hdr_id2int(header->hdr, BCF_DT_ID, s.c_str());
+        bcf_add_filter(header->hdr, line.get(), tmpi);
     }
 
     /** @brief return 0-base start of the variant (can be any type) */
@@ -1751,7 +1770,7 @@ class BcfWriter
     }
 
     /// copy header of given VCF and restrict on samples
-  void copyHeader(const std::string & vcffile, std::string samples = "-")
+    void copyHeader(const std::string & vcffile, std::string samples = "-")
     {
         htsFile * fp2 = hts_open(vcffile.c_str(), "r");
         if(!fp2) throw std::invalid_argument("I/O error: input file is invalid");
