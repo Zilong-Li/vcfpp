@@ -385,7 +385,7 @@ class BcfHeader
                                      + "-th sample are not in the VCF.\nparameter samples:" + samples);
         }
     }
-
+  
     /** @brief set the VCF version */
     inline void setVersion(const std::string & version) const
     {
@@ -1769,13 +1769,23 @@ class BcfWriter
         hp = &h;
     }
 
-    /// copy header of given VCF and restrict on samples
+    /// copy header of given VCF and restrict on samples. if samples=="", FORMAT removed and only sites left
     void copyHeader(const std::string & vcffile, std::string samples = "-")
     {
         htsFile * fp2 = hts_open(vcffile.c_str(), "r");
         if(!fp2) throw std::invalid_argument("I/O error: input file is invalid");
-        header.hdr = bcf_hdr_read(fp2);
-        header.setSamples(samples);
+        if(samples == "")
+        { // site-only
+            bcf_hdr_t * hfull = bcf_hdr_read(fp2);
+            header.hdr = bcf_hdr_subset(hfull, 0, 0, 0);
+            bcf_hdr_remove(header.hdr, BCF_HL_FMT, NULL);
+            bcf_hdr_destroy(hfull);
+        }
+        else
+        {
+            header.hdr = bcf_hdr_read(fp2);
+            header.setSamples(samples);
+        }
         hts_close(fp2);
         initalHeader(header);
     }

@@ -116,19 +116,34 @@ bw.writeLine("chr20\t2006060\trs146931526\tG\tC\t100\tPASS\tAF=0.000998403\tGT\t
 *** Use an existing VCF as template
 
 In this example, we first read VCF file =test/test-vcf-read.vcf.gz=. Second,
-we construct an empty variant record and update the record with the input
+we construct a variant record and update the record with the input
 VCF. Third, we construct a BcfWriter object using the meta data in the
 header of the input VCF, writing out the header and the modified variant
 record.
 
 #+begin_src C++
-BcfReader br("test/test-vcf-read.vcf.gz");
+BcfReader br("test/test.vcf.gz");
+BcfWriter bw("out.vcf.gz", br.header);
 BcfRecord var(br.header);
 br.getNextVariant(var);
-BcfWriter bw("out.vcf.gz", br.header);
 bw.writeHeader();
 var.setPOS(100001); // update the POS of the variant
 bw.writeRecord(var);
+#+end_src
+
+In some cases where we want to modify the samples of a template VCF, we
+can associate the =BcfWriter= and =BcfRecord= with another modifiable header
+instead of the non-modifiable header as the above.
+
+#+begin_src C++
+BcfReader br("test/test.vcf.gz");
+BcfWriter bw("out.vcf.gz");
+// copy header of template vcf and restrict to target sample
+bw.copyHeader("test/test.vcf.gz", "HG00097");
+BcfRecord var(bw.header);
+br.getNextVariant(var);
+var.setPOS(100001);
+bw.writeRecord(var); // output only sample HG00097
 #+end_src
 
 ** Variants Operation
