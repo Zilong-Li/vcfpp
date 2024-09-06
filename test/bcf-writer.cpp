@@ -22,7 +22,7 @@ TEST_CASE("make a vcf from scratch", "[bcf-writer]")
 
 TEST_CASE("Write BCF with custome header and variants", "[bcf-writer]")
 {
-    BcfWriter bw("test.vcf.gz");
+    BcfWriter bw("test.write.vcf.gz");
     bw.header.addFORMAT("GT", "1", "String", "Genotype");
     bw.header.addINFO("AF", "A", "Float", "Estimated allele frequency in the range (0,1)");
     bw.header.addContig("chr20");
@@ -35,7 +35,7 @@ TEST_CASE("can use header from another bcf.gz", "[bcf-writer]")
 {
     BcfReader br("test-vcf-read.bcf.gz");
     BcfRecord v(br.header);
-    BcfWriter bw("test.bcf.gz", br.header);
+    BcfWriter bw("test.write.bcf.gz", br.header);
     bw.writeHeader();
     br.getNextVariant(v);
     bw.writeRecord(v);
@@ -45,7 +45,7 @@ TEST_CASE("init header twice", "[bcf-writer]")
 {
     BcfReader br("test-vcf-read.vcf");
     BcfRecord v(br.header);
-    BcfWriter bw("test.vcf", "VCF4.3");
+    BcfWriter bw("test.write.vcf.gz", "VCF4.3");
     bw.initalHeader(br.header);
     bw.writeHeader();
     br.getNextVariant(v);
