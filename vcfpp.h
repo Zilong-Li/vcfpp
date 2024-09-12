@@ -2,7 +2,7 @@
  * @file        https://github.com/Zilong-Li/vcfpp/vcfpp.h
  * @author      Zilong Li
  * @email       zilong.dk@gmail.com
- * @version     v0.5.0
+ * @version     v0.5.1
  * @breif       a single C++ file for manipulating VCF
  * Copyright (C) 2022-2023.The use of this code is governed by the LICENSE file.
  ******************************************************************************/
@@ -372,8 +372,35 @@ class BcfHeader
     }
 
     /**
+     * @brief update the sample id in the header
+     * @param samples a comma-separated string for multiple new samples
+     * @note this only update the samples name in a given sequential order
+     * */
+    inline void updateSamples(const std::string & samples) const
+    {
+        int sid = 0; // index of the sample to modify
+        for(auto s : split_string(samples, ","))
+        {
+            if(sid < nSamples())
+            {
+                hdr->samples[sid] = strdup(s.c_str());
+                sid++;
+            }
+            else
+            {
+#    if defined(VERBOSE)
+                std::cerr << "you provided too many samples";
+#    endif
+                break;
+            }
+        }
+        int ret = bcf_hdr_sync(hdr);
+        if(ret != 0) throw std::runtime_error("could not modify " + samples + " in the header\n");
+    }
+
+    /**
      * @brief explicitly set samples to be extracted
-     * @param samples samples to include or exclude  as a comma-separated string
+     * @param samples samples to include or exclude as a comma-separated string
      * */
     inline void setSamples(const std::string & samples) const
     {
@@ -385,7 +412,7 @@ class BcfHeader
                                      + "-th sample are not in the VCF.\nparameter samples:" + samples);
         }
     }
-  
+
     /** @brief set the VCF version */
     inline void setVersion(const std::string & version) const
     {
