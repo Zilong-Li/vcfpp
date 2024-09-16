@@ -1,31 +1,47 @@
 #+title: News and Changes
-
+* v0.5.1
+- add =BcfHeader::updateSamples=
+  
+* v0.5.0
+- major release with breaking APIs: =setCHR=, =setID=, =setRefAlt=
+- new tool: =vcf_nipt=, which splits the output of QUILT2-nipt into two VCFs for mother and fetus respectively.
+  
 * v0.3.4
 - rename BcfRecord::INFO as BcfRecord::allINFO
+  
 * v0.2.0
 - major release
+  
 * v0.1.8
 - fix BcfWriter
+  
 * v0.1.7
 - add split_string
 - add INFO()
+  
 * v0.1.6
 - BcfReader API break change
 - add setRegionIndex
+  
 * v0.1.5
 - support multiplodiy
 - handl genotype missingness. =-9= represents missing value.
 - update API =setGenotypes=
+  
 * v0.1.4
 - add updateGenotypes, setAlleleStr
 - update clang format
 - bug fix
+  
 * v0.1.3
 - add some tools
 - bug fix
+  
 * v0.1.2
 - fix writer
+  
 * v0.1.1
 - fix inconsistency style
+  
 * v0.1.0
 - first release

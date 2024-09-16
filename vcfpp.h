@@ -35,6 +35,8 @@
 
 #pragma once
 
+#include <cstddef>
+#include <stdexcept>
 #ifndef VCFPP_H_
 #    define VCFPP_H_
 
@@ -376,26 +378,50 @@ class BcfHeader
      * @param samples a comma-separated string for multiple new samples
      * @note this only update the samples name in a given sequential order
      * */
-    inline void updateSamples(const std::string & samples) const
+    void updateSamples(const std::string & samples)
     {
-        int sid = 0; // index of the sample to modify
-        for(auto s : split_string(samples, ","))
+        auto ss = split_string(samples, ",");
+        const int nsamples = nSamples();
+        if((size_t)nsamples != ss.size()) throw std::runtime_error("You provide either too few or too many samples");
+        kstring_t htxt = {0, 0, 0};
+        bcf_hdr_format(hdr, 1, &htxt);
+        // Find the beginning of the #CHROM line
+        int i = htxt.l - 2, ncols = 0;
+        while(i >= 0 && htxt.s[i] != '\n')
         {
-            if(sid < nSamples())
-            {
-                hdr->samples[sid] = strdup(s.c_str());
-                sid++;
-            }
-            else
-            {
-#    if defined(VERBOSE)
-                std::cerr << "you provided too many samples";
-#    endif
-                break;
-            }
+            if(htxt.s[i] == '\t') ncols++;
+            i--;
         }
-        int ret = bcf_hdr_sync(hdr);
-        if(ret != 0) throw std::runtime_error("could not modify " + samples + " in the header\n");
+        if(i < 0 || strncmp(htxt.s + i + 1, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT", 45))
+        {
+            if(i > 0 && !strncmp(htxt.s + i + 1, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO", 38))
+                throw std::runtime_error("Error: missing FORMAT fields, cowardly refusing to add samples\n");
+            throw std::runtime_error("Could not parse the header: " + std::string(htxt.s));
+        }
+
+        ncols = 0;
+        while(ncols != 9)
+        {
+            i++;
+            if(htxt.s[i] == '\t') ncols++;
+        }
+        htxt.l = i;
+
+        // Replace all samples
+        for(i = 0; i < nsamples; i++)
+        {
+            kputc('\t', &htxt);
+            kputs(ss[i].c_str(), &htxt);
+        }
+        kputc('\n', &htxt);
+
+        // destroy the old and make new header
+        bcf_hdr_destroy(hdr);
+        hdr = bcf_hdr_init("r");
+        if(bcf_hdr_parse(hdr, htxt.s) < 0)
+            throw std::runtime_error("An error occurred while parsing the header\n");
+        // free everything
+        free(htxt.s);
     }
 
     /**

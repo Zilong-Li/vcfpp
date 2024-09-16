@@ -55,13 +55,13 @@ TEST_CASE("init header twice", "[bcf-writer]")
 TEST_CASE("Write VCF by copying header of another VCF and modifying it", "[bcf-writer]")
 {
     BcfReader br("test-vcf-read.bcf");
-    BcfRecord v(br.header);
-    br.getNextVariant(v);
     BcfWriter bw;
     bw.open("test-vcf-write.vcf");
     bw.copyHeader("test-vcf-read.bcf");
     bw.header.addINFO("AF", "A", "Float", "Estimated allele frequency in the range (0,1)");
-    v.resetHeader(bw.header);
+    bw.header.updateSamples("X001");
+    BcfRecord v(bw.header);
+    br.getNextVariant(v);
     v.setINFO("AF", 0.2);
     bw.writeRecord(v);
     bw.close();
