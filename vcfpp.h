@@ -2,7 +2,7 @@
  * @file        https://github.com/Zilong-Li/vcfpp/vcfpp.h
  * @author      Zilong Li
  * @email       zilong.dk@gmail.com
- * @version     v0.5.1
+ * @version     v0.5.2
  * @breif       a single C++ file for manipulating VCF
  * Copyright (C) 2022-2023.The use of this code is governed by the LICENSE file.
  ******************************************************************************/
@@ -382,7 +382,8 @@ class BcfHeader
     {
         auto ss = split_string(samples, ",");
         const int nsamples = nSamples();
-        if((size_t)nsamples != ss.size()) throw std::runtime_error("You provide either too few or too many samples");
+        if(nsamples != (int)ss.size())
+            throw std::runtime_error("You provide either too few or too many samples");
         kstring_t htxt = {0, 0, 0};
         bcf_hdr_format(hdr, 1, &htxt);
         // Find the beginning of the #CHROM line
@@ -1005,7 +1006,8 @@ class BcfRecord
      * */
     void setPhasing(const std::vector<char> & v)
     {
-        assert((int)v.size() == nsamples);
+        if((int)v.size() != nsamples)
+            throw std::runtime_error("the size of input vector is not matching the size of genotypes");
         gtPhase = v;
     }
 
@@ -1653,13 +1655,13 @@ class BcfReader
         {
             isBcf = false;
             tidx = tbx_index_load(fname.c_str());
-            assert(tidx != NULL && "error loading tabix index!");
+            if(tidx == NULL) throw std::runtime_error("error in loading tabix index!");
             if(itr) tbx_itr_destroy(itr); // reset current region.
             if(region.empty())
                 itr = tbx_itr_querys(tidx, ".");
             else
                 itr = tbx_itr_querys(tidx, region.c_str());
-            assert(itr != NULL && "no interval region found.failed!");
+            if(itr == NULL) throw std::runtime_error("no interval region found!");
         }
     }
 
