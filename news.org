@@ -1,4 +1,12 @@
 #+title: News and Changes
+* v0.6.0
+- add =BcfReader::getStatus=
+- fix =BcfReader::getVariantsCount=
+- improve memory safety
+  
+* v0.5.2
+- throw errors if a query region doesn't exist
+  
 * v0.5.1
 - add =BcfHeader::updateSamples=
   

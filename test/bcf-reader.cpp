@@ -1,5 +1,6 @@
 #include "../vcfpp.h"
 #include "catch.hh"
+#include <exception>
 
 using namespace vcfpp;
 using namespace std;
@@ -68,7 +69,7 @@ TEST_CASE("parse PL in vcf - vector<int>", "[bcf-reader]")
 {
     string vcffile{"test-GL.vcf.gz"};
     BcfWriter bw(vcffile, "VCF4.2");
-    bw.header.addContig("chr20"); 
+    bw.header.addContig("chr20");
     bw.header.addINFO("AF", "A", "Float", "Estimated allele frequency in the range (0,1)");
     bw.header.addFORMAT("GT", "1", "String", "Genotype");
     bw.header.addFORMAT("PL", "G", "Integer", "List of Phred-scaled genotype likelihoods");
@@ -78,8 +79,8 @@ TEST_CASE("parse PL in vcf - vector<int>", "[bcf-reader]")
     BcfReader br(vcffile);
     BcfRecord var(br.header);
     vector<int> pl;
-    REQUIRE(br.getNextVariant(var)==true);
-    var.getFORMAT("PL",pl);
+    REQUIRE(br.getNextVariant(var) == true);
+    var.getFORMAT("PL", pl);
     for(auto g : pl) cout << g << endl;
 }
 
@@ -87,18 +88,19 @@ TEST_CASE("parse GL in vcf - vector<float>", "[bcf-reader]")
 {
     string vcffile{"test-GL.vcf.gz"};
     BcfWriter bw(vcffile, "VCF4.2");
-    bw.header.addContig("chr20"); 
+    bw.header.addContig("chr20");
     bw.header.addINFO("AF", "A", "Float", "Estimated allele frequency in the range (0,1)");
     bw.header.addFORMAT("GT", "1", "String", "Genotype");
     bw.header.addFORMAT("GL", "G", "Float", "List of log scale genotype likelihoods");
     for(auto & s : {"id01", "id02"}) bw.header.addSample(s); // add 3 samples
-    bw.writeLine("chr20\t2006060\trs146931526\tG\tA\t100\tPASS\tAF=0.02\tGT:GL\t0/1:-323.03,-99.29,-802.53\t1/1:-133.03,-299.29,-902.53");
+    bw.writeLine("chr20\t2006060\trs146931526\tG\tA\t100\tPASS\tAF=0.02\tGT:GL\t0/"
+                 "1:-323.03,-99.29,-802.53\t1/1:-133.03,-299.29,-902.53");
     bw.close();
     BcfReader br(vcffile);
     BcfRecord var(br.header);
     vector<float> gl;
-    REQUIRE(br.getNextVariant(var)==true);
-    var.getFORMAT("GL",gl);
+    REQUIRE(br.getNextVariant(var) == true);
+    var.getFORMAT("GL", gl);
     for(auto g : gl) cout << g << endl;
 }
 
@@ -106,7 +108,7 @@ TEST_CASE("parse vcf with multialleles - vector<int>", "[bcf-reader]")
 {
     string vcffile{"test-multialleles.vcf.gz"};
     BcfWriter bw(vcffile, "VCF4.2");
-    bw.header.addContig("chr20"); 
+    bw.header.addContig("chr20");
     bw.header.addINFO("AF", "A", "Float", "Estimated allele frequency in the range (0,1)");
     bw.header.addFORMAT("GT", "1", "String", "Genotype");
     for(auto & s : {"id01", "id02", "id03"}) bw.header.addSample(s); // add 3 samples
@@ -116,7 +118,7 @@ TEST_CASE("parse vcf with multialleles - vector<int>", "[bcf-reader]")
     BcfReader br("test-multialleles.vcf.gz");
     BcfRecord var(br.header);
     vector<int> gt;
-    REQUIRE(br.getNextVariant(var)==true);
+    REQUIRE(br.getNextVariant(var) == true);
     auto l2 = var.asString();
     REQUIRE(l2 == l1 + "\n");
     var.getGenotypes(gt);
@@ -127,7 +129,7 @@ TEST_CASE("parse EV in vcf - vector<string>", "[bcf-reader]")
 {
     string vcffile{"test-GL.vcf.gz"};
     BcfWriter bw(vcffile, "VCF4.2");
-    bw.header.addContig("chr20"); 
+    bw.header.addContig("chr20");
     bw.header.addINFO("AF", "A", "Float", "Estimated allele frequency in the range (0,1)");
     bw.header.addFORMAT("GT", "1", "String", "Genotype");
     bw.header.addFORMAT("EV", "G", "String", "Classes of evidence supporting final genotype");
@@ -137,10 +139,10 @@ TEST_CASE("parse EV in vcf - vector<string>", "[bcf-reader]")
     BcfReader br(vcffile);
     BcfRecord var(br.header);
     vector<string> ev;
-    REQUIRE(br.getNextVariant(var)==true);
-    var.getFORMAT("EV",ev);
-    REQUIRE(ev[0]=="RD");
-    REQUIRE(ev[1]=="SR,PE");
+    REQUIRE(br.getNextVariant(var) == true);
+    var.getFORMAT("EV", ev);
+    REQUIRE(ev[0] == "RD");
+    REQUIRE(ev[1] == "SR,PE");
 }
 
 TEST_CASE("throw error when file is not valid", "[bcf-reader]")
@@ -149,4 +151,44 @@ TEST_CASE("throw error when file is not valid", "[bcf-reader]")
     CHECK_THROWS(br.open("no-test-GL.vcf.gz"));
     BcfReader bw;
     CHECK_THROWS(bw.open("ff://no-access.vcf.gz"));
+}
+
+TEST_CASE("throw error if the region is not valid", "[bcf-reader]")
+{
+    BcfReader * br = nullptr;
+    try
+    {
+        br = new BcfReader("test.vcf.gz", "XXXX");
+        delete br;
+    }
+    catch(exception & e)
+    {
+        cout << e.what();
+    }
+}
+
+TEST_CASE("can check the status of a region", "[bcf-reader]")
+{
+    int status;
+    BcfReader br("test.vcf.gz");
+    status = br.getStatus("chr21:5030089-5030090");
+    REQUIRE(status == 0);  // valid but empty
+    status = br.getStatus("chr21:5030089-");
+    REQUIRE(status == 1);  // valid and not empty
+    status = br.getStatus("chr22:5030089");
+    REQUIRE(status == -2);  // not valid or not found in the VCF
+    BcfReader br2("test-no-index.vcf.gz");
+    status = br2.getStatus("chr21");
+    REQUIRE(status == -1);  // no index file found
+}
+
+TEST_CASE("can count the number of variants in a valid region", "[bcf-reader]")
+{
+    // BcfReader br("test.vcf.gz", "chr21:5030089-5030090");
+    int nVariants = -1;
+    BcfReader br("test.vcf.gz");
+    nVariants = br.getVariantsCount("chr21:5030089-5030090");
+    REQUIRE(nVariants == 0);
+    nVariants = br.getVariantsCount("chr21:5030089-");
+    REQUIRE(nVariants == 13);
 }
