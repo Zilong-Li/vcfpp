@@ -1648,10 +1648,10 @@ class BcfReader
     /**
      * @brief query the status of a given region in the VCF
      * @return -2: the region is not a valid bcftools-like format, 
-                   or it is not presenting in the VCF even though it's bcftols-like format.
-               -1: there is no index file found.
-                0: the region is valid but empty. 
-                1: vaild and not empty.
+     *             or it is not presenting in the VCF even though it's bcftols-like format. \n
+     *         -1: there is no index file found. \n
+     *          0: the region is valid but empty. \n
+     *          1: vaild and not empty. \n
      */
     int getStatus(const std::string & region)
     {
@@ -1674,8 +1674,8 @@ class BcfReader
 
     /**
      * @brief count the number of variants by iterating through a given region.
-     * @note If you want to continue work on that region, remember to reset the region by setRegion!
-             Also, check the status of the region first to handle the different cases
+     * @note If you want to continue work on that region, remember to reset the region by setRegion()! \n
+     *        Also, check the status of the region first to handle the different cases!
      */
     int getVariantsCount(const std::string & region)
     {

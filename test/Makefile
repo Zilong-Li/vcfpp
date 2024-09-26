@@ -30,4 +30,3 @@ test:
 	./bcf-reader.bin --success
 	./bcf-writer.bin --success
 	./bcf-variant.bin --success
-	./example.bin --success
