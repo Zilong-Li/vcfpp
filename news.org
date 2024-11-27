@@ -1,4 +1,7 @@
 #+title: News and Changes
+* v0.6.1
+- fix subsetting for bcf [[https://github.com/Zilong-Li/vcfppR/issues/11][#11]]
+  
 * v0.6.0
 - add =BcfReader::getStatus=
 - fix =BcfReader::getVariantsCount=

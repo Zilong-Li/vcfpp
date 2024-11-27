@@ -1555,7 +1555,7 @@ class BcfReader
     std::shared_ptr<hts_itr_t> itr; // hts iterator
     kstring_t s = {0, 0, NULL}; // kstring
     std::string fname;
-    bool isBcf; // if the input file is bcf or vcf;
+    bool isBcf = false; // if the input file is bcf or vcf;
 
   public:
     /// a BcfHeader object
@@ -1748,6 +1748,7 @@ class BcfReader
             if(isBcf)
             {
                 ret = bcf_itr_next(fp.get(), itr.get(), r.line.get());
+                bcf_subset_format(r.header->hdr, r.line.get()); // has to be called explicitly for bcf
                 bcf_unpack(r.line.get(), BCF_UN_ALL);
                 return (ret >= 0);
             }

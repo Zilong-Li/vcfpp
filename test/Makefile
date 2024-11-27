@@ -27,6 +27,6 @@ clean:
 	rm -f *.o *.bin
 
 test:
-	./bcf-reader.bin --success
-	./bcf-writer.bin --success
-	./bcf-variant.bin --success
+	./bcf-reader.bin --success 2> /dev/null
+	./bcf-writer.bin --success 2> /dev/null
+	./bcf-variant.bin --success 2> /dev/null

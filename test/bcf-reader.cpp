@@ -158,7 +158,7 @@ TEST_CASE("throw error if the region is not valid", "[bcf-reader]")
     BcfReader * br = nullptr;
     try
     {
-        br = new BcfReader("test.vcf.gz", "XXXX");
+        br = new BcfReader("test-region.vcf.gz", "XXXX");
         delete br;
     }
     catch(exception & e)
@@ -170,25 +170,41 @@ TEST_CASE("throw error if the region is not valid", "[bcf-reader]")
 TEST_CASE("can check the status of a region", "[bcf-reader]")
 {
     int status;
-    BcfReader br("test.vcf.gz");
+    BcfReader br("test-region.vcf.gz");
     status = br.getStatus("chr21:5030089-5030090");
-    REQUIRE(status == 0);  // valid but empty
+    REQUIRE(status == 0); // valid but empty
     status = br.getStatus("chr21:5030089-");
-    REQUIRE(status == 1);  // valid and not empty
+    REQUIRE(status == 1); // valid and not empty
     status = br.getStatus("chr22:5030089");
-    REQUIRE(status == -2);  // not valid or not found in the VCF
+    REQUIRE(status == -2); // not valid or not found in the VCF
     BcfReader br2("test-no-index.vcf.gz");
     status = br2.getStatus("chr21");
-    REQUIRE(status == -1);  // no index file found
+    REQUIRE(status == -1); // no index file found
 }
 
 TEST_CASE("can count the number of variants in a valid region", "[bcf-reader]")
 {
-    // BcfReader br("test.vcf.gz", "chr21:5030089-5030090");
     int nVariants = -1;
-    BcfReader br("test.vcf.gz");
+    BcfReader br("test-region.vcf.gz");
     nVariants = br.getVariantsCount("chr21:5030089-5030090");
     REQUIRE(nVariants == 0);
     nVariants = br.getVariantsCount("chr21:5030089-");
     REQUIRE(nVariants == 13);
+}
+
+TEST_CASE("subset both region and samples for bcf", "[bcf-reader]")
+{
+    BcfReader br("test.bcf", "1:10000-13000", "I1,I30");
+    BcfRecord var(br.header);
+    vector<float> ds;
+    int n = 1;
+    while(br.getNextVariant(var))
+    {
+        var.getFORMAT("DS", ds);
+        if(n == 1) REQUIRE(ds == vector<float>{2, 2});
+        if(n == 2) REQUIRE(ds == vector<float>{0.195, 0.000});
+        if(n == 3) REQUIRE(ds == vector<float>{1.000, 0.000});
+        if(n == 4) REQUIRE(ds == vector<float>{2.000, 0.036});
+        n++;
+    }
 }
