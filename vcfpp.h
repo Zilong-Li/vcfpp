@@ -2,7 +2,7 @@
  * @file        https://github.com/Zilong-Li/vcfpp/vcfpp.h
  * @author      Zilong Li
  * @email       zilong.dk@gmail.com
- * @version     v0.6.0
+ * @version     v0.6.1
  * @breif       a single C++ file for manipulating VCF
  * Copyright (C) 2022-2023.The use of this code is governed by the LICENSE file.
  ******************************************************************************/
@@ -1628,6 +1628,8 @@ class BcfReader
         fname = file;
         fp = std::shared_ptr<htsFile>(hts_open(fname.c_str(), "r"), details::hts_file_close());
         if(!fp) throw std::invalid_argument("I/O error: input file is invalid");
+        enum htsExactFormat hts_format = hts_get_format(fp.get())->format;
+        if(hts_format == bcf) isBcf = true;
         header.hdr = bcf_hdr_read(fp.get());
         nsamples = bcf_hdr_nsamples(header.hdr);
         SamplesName = header.getSamples();
@@ -1647,7 +1649,7 @@ class BcfReader
 
     /**
      * @brief query the status of a given region in the VCF
-     * @return -2: the region is not a valid bcftools-like format, 
+     * @return -2: the region is not a valid bcftools-like format,
      *             or it is not presenting in the VCF even though it's bcftols-like format. \n
      *         -1: there is no index file found. \n
      *          0: the region is valid but empty. \n
@@ -1710,9 +1712,8 @@ class BcfReader
         // 1. check and load index first
         // 2. query iterval region
         // 3. if region is empty, use "."
-        if(details::isEndWith(fname, "bcf") || details::isEndWith(fname, "bcf.gz"))
+        if(isBcf)
         {
-            isBcf = true;
             hidx = std::shared_ptr<hts_idx_t>(bcf_index_load(fname.c_str()), details::hts_idx_close());
             if(itr) itr.reset(); // reset current region.
             if(region.empty())
@@ -1724,7 +1725,6 @@ class BcfReader
         }
         else
         {
-            isBcf = false;
             tidx = std::shared_ptr<tbx_t>(tbx_index_load(fname.c_str()), details::tabix_idx_close());
             if(tidx.get() == NULL) throw std::invalid_argument(" no tabix index found!");
             if(itr) itr.reset(); // reset
