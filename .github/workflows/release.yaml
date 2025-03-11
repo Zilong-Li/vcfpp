@@ -23,7 +23,7 @@ jobs:
         run: |
           sudo apt update
           sudo apt-get update
-          sudo apt-get -qy install build-essential zlib1g zlib1g-dev curl libcurl4-openssl-dev lzma-dev liblzma-dev libeigen3-dev
+          sudo apt-get -qy install build-essential zlib1g zlib1g-dev libbz2-dev libdeflate-dev curl libcurl4-openssl-dev lzma-dev liblzma-dev libeigen3-dev
           git clone --recursive https://github.com/samtools/htslib.git
           cd htslib && autoreconf -i && ./configure --enable-libcurl
           sudo make -j 4 install
