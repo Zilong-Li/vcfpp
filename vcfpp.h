@@ -2,7 +2,7 @@
  * @file        https://github.com/Zilong-Li/vcfpp/vcfpp.h
  * @author      Zilong Li
  * @email       zilong.dk@gmail.com
- * @version     v0.6.3
+ * @version     v0.6.4
  * @breif       a single C++ file for manipulating VCF
  * Copyright (C) 2022-2023.The use of this code is governed by the LICENSE file.
  ******************************************************************************/
@@ -226,7 +226,7 @@ class BcfHeader
     bcf_hrec_t * hrec = nullptr; // populate header
 
   public:
-    BcfHeader() {}
+    BcfHeader() = default;
 
     ~BcfHeader()
     {
@@ -316,7 +316,7 @@ class BcfHeader
     /** @brief return header as a string */
     inline std::string asString() const
     {
-        kstring_t s = {0, 0, NULL}; // kstring
+        kstring_t s = {0, 0, nullptr}; // kstring
         if(bcf_hdr_format(hdr, 0, &s) == 0) // append header string to s.s! append!
         {
             std::string out(s.s, s.l);
@@ -516,7 +516,7 @@ class BcfRecord
 
   public:
     /// empty constructor. call init() afterwards
-    BcfRecord() {}
+    BcfRecord() = default;
 
     /// constructor with a given BcfHeader object
     BcfRecord(BcfHeader & h)
@@ -768,7 +768,7 @@ class BcfRecord
         nvalues = fmt->n;
         // if ndst < (fmt->n+1)*nsmpl; then realloc is involved
         ret = -1, ndst = 0;
-        char ** dst = NULL;
+        char ** dst = nullptr;
         if(header->getFormatType(tag) == 3)
             ret = bcf_get_format_string(header->hdr, line.get(), tag.c_str(), &dst, &ndst);
         if(ret > 0)
@@ -1566,7 +1566,7 @@ class BcfReader
     std::vector<std::string> SamplesName;
 
     /// Construct an empty BcfReader
-    BcfReader() {}
+    BcfReader() = default;
 
     /**
      *  @brief construct a vcf/bcf reader from file.
@@ -1740,7 +1740,7 @@ class BcfReader
                 itr = std::shared_ptr<hts_itr_t>(tbx_itr_querys(tidx.get(), region.c_str()),
                                                  details::hts_iter_close());
         }
-        if(itr.get() == NULL)
+        if(itr.get() == nullptr)
             throw std::runtime_error("region was not found! make sure the region format is correct");
     }
 
@@ -1797,7 +1797,7 @@ class BcfWriter
     BcfHeader header;
 
     /// Construct an empty BcfWriter
-    BcfWriter() {}
+    BcfWriter() = default;
 
     /**
      * @brief          Open VCF/BCF file for writing. The format is infered from file's suffix
@@ -1855,7 +1855,7 @@ class BcfWriter
         initalHeader(h);
     }
 
-    ~BcfWriter() {}
+    ~BcfWriter() = default;
 
     /**
      * @brief          Open VCF/BCF file for writing. The format is infered from file's suffix
