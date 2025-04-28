@@ -2,7 +2,7 @@
  * @file        https://github.com/Zilong-Li/vcfpp/vcfpp.h
  * @author      Zilong Li
  * @email       zilong.dk@gmail.com
- * @version     v0.6.2
+ * @version     v0.6.3
  * @breif       a single C++ file for manipulating VCF
  * Copyright (C) 2022-2023.The use of this code is governed by the LICENSE file.
  ******************************************************************************/
@@ -147,7 +147,7 @@ inline std::vector<std::string> split_string(const std::string & s, const std::s
     {
         if(is_seperator[(uint8_t)s[i]] || i == (int)s.size())
         {
-            ret.push_back(std::string(s.begin() + begin, s.begin() + i));
+            ret.emplace_back(s.begin() + begin, s.begin() + i);
             begin = i + 1;
         }
     }
@@ -222,8 +222,8 @@ class BcfHeader
     friend class BcfWriter;
 
   private:
-    bcf_hdr_t * hdr = NULL; // bcf header
-    bcf_hrec_t * hrec = NULL; // populate header
+    bcf_hdr_t * hdr = nullptr; // bcf header
+    bcf_hrec_t * hrec = nullptr; // populate header
 
   public:
     BcfHeader() {}
@@ -335,7 +335,7 @@ class BcfHeader
         std::vector<std::string> vec;
         for(int i = 0; i < bcf_hdr_nsamples(hdr); i++)
         {
-            vec.push_back(std::string(hdr->samples[i]));
+            vec.emplace_back(hdr->samples[i]);
         }
         return vec;
     }
@@ -349,7 +349,7 @@ class BcfHeader
         std::vector<std::string> vec;
         for(int i = 0; i < ret; i++)
         {
-            vec.push_back(std::string(seqs[i]));
+            vec.emplace_back(seqs[i]);
         }
         free(seqs);
         return vec;
@@ -417,7 +417,7 @@ class BcfHeader
         const int nsamples = nSamples();
         if(nsamples != (int)ss.size())
             throw std::runtime_error("You provide either too few or too many samples");
-        kstring_t htxt = {0, 0, 0};
+        kstring_t htxt = {0, 0, nullptr};
         bcf_hdr_format(hdr, 1, &htxt);
         // Find the beginning of the #CHROM line
         int i = htxt.l - 2, ncols = 0;
@@ -500,10 +500,10 @@ class BcfRecord
   private:
     BcfHeader * header;
     std::shared_ptr<bcf1_t> line = std::shared_ptr<bcf1_t>(bcf_init(), details::bcf_line_close()); // variant
-    bcf_hdr_t * hdr_d = NULL; // a dup header by bcf_hdr_dup(header->hdr)
-    bcf_fmt_t * fmt = NULL;
-    bcf_info_t * info = NULL;
-    int32_t * gts = NULL;
+    bcf_hdr_t * hdr_d = nullptr; // a dup header by bcf_hdr_dup(header->hdr)
+    bcf_fmt_t * fmt = nullptr;
+    bcf_info_t * info = nullptr;
+    int32_t * gts = nullptr;
     int ndst, ret, nsamples;
     bool noneMissing = true; // whenever parsing a tag have to reset this variable
     bool isAllPhased = false;
@@ -556,7 +556,7 @@ class BcfRecord
     /** @brief return current variant as raw string */
     inline std::string asString() const
     {
-        kstring_t s = {0, 0, NULL}; // kstring
+        kstring_t s = {0, 0, nullptr}; // kstring
         if(vcf_format(header->hdr, line.get(), &s) == 0)
         {
             std::string out(s.s, s.l);
@@ -612,7 +612,7 @@ class BcfRecord
         for(i = 0; i < nsamples; i++)
         {
             // check and fill in typeOfGT; only supports SNPs now. check vcfstats.c for inspiration
-            typeOfGT[i] = bcf_gt_type(fmt, i, NULL, NULL);
+            typeOfGT[i] = bcf_gt_type(fmt, i, nullptr, nullptr);
             if(typeOfGT[i] == GT_UNKN)
             {
                 noneMissing = false; // set missing as het, user should check if isNoneMissing();
@@ -1139,7 +1139,7 @@ class BcfRecord
     /** @brief add one variant record from given string*/
     void addLineFromString(const std::string & vcfline)
     {
-        kstring_t s = {0, 0, NULL};
+        kstring_t s = {0, 0, nullptr};
         kputsn(vcfline.c_str(), vcfline.length(), &s);
         ret = vcf_parse1(&s, header->hdr, line.get());
         free(s.s);
@@ -1149,7 +1149,7 @@ class BcfRecord
             std::string contig(bcf_hdr_id2name(header->hdr, line->rid));
             hdr_d = bcf_hdr_dup(header->hdr);
             header->hrec = bcf_hdr_id2hrec(hdr_d, BCF_DT_CTG, 0, line->rid);
-            if(header->hrec == NULL)
+            if(header->hrec == nullptr)
                 throw std::runtime_error("contig" + contig + " unknow and not found in the header.\n");
             ret = bcf_hdr_add_hrec(header->hdr, header->hrec);
             if(ret < 0) throw std::runtime_error("error adding contig " + contig + " to header.\n");
@@ -1166,7 +1166,7 @@ class BcfRecord
     /** @brief return boolean value indicates if current variant is Structual Variant or not */
     inline bool isSV() const
     {
-        if(bcf_get_info(header->hdr, line.get(), "SVTYPE") == NULL)
+        if(bcf_get_info(header->hdr, line.get(), "SVTYPE") == nullptr)
         {
             return false;
         }
@@ -1553,7 +1553,7 @@ class BcfReader
     std::shared_ptr<hts_idx_t> hidx; // hts index file
     std::shared_ptr<tbx_t> tidx; // .tbi .csi index file for vcf files
     std::shared_ptr<hts_itr_t> itr; // hts iterator
-    kstring_t s = {0, 0, NULL}; // kstring
+    kstring_t s = {0, 0, nullptr}; // kstring
     std::string fname;
     bool isBcf = false; // if the input file is bcf or vcf;
 
@@ -1732,7 +1732,7 @@ class BcfReader
         }
         else
         {
-            if(tidx.get() == NULL) throw std::invalid_argument(" no tabix index found!");
+            if(tidx.get() == nullptr) throw std::invalid_argument(" no tabix index found!");
             if(itr) itr.reset(); // reset
             if(region.empty())
                 itr = std::shared_ptr<hts_itr_t>(tbx_itr_querys(tidx.get(), "."), details::hts_iter_close());
@@ -1749,7 +1749,7 @@ class BcfReader
     bool getNextVariant(BcfRecord & r)
     {
         int ret = -1;
-        if(itr.get() != NULL)
+        if(itr.get() != nullptr)
         {
             if(isBcf)
             {
@@ -1912,8 +1912,8 @@ class BcfWriter
         if(samples == "")
         { // site-only
             bcf_hdr_t * hfull = bcf_hdr_read(fp2);
-            header.hdr = bcf_hdr_subset(hfull, 0, 0, 0);
-            bcf_hdr_remove(header.hdr, BCF_HL_FMT, NULL);
+            header.hdr = bcf_hdr_subset(hfull, 0, nullptr, nullptr);
+            bcf_hdr_remove(header.hdr, BCF_HL_FMT, nullptr);
             bcf_hdr_destroy(hfull);
         }
         else
@@ -1929,7 +1929,7 @@ class BcfWriter
     void writeLine(const std::string & vcfline)
     {
         if(!isHeaderWritten && !writeHeader()) throw std::runtime_error("could not write header\n");
-        kstring_t s = {0, 0, NULL};
+        kstring_t s = {0, 0, nullptr};
         kputsn(vcfline.c_str(), vcfline.length(), &s);
         ret = vcf_parse1(&s, hp->hdr, b.get());
         free(s.s);
