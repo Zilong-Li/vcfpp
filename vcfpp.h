@@ -1585,7 +1585,7 @@ class BcfReader
     BcfReader(const std::string & file, const std::string & region) : fname(file)
     {
         open(file);
-        if(!region.empty()) setRegion(region);
+        if(file != "-" && !region.empty()) setRegion(region);
         SamplesName = header.getSamples();
     }
 
@@ -1602,7 +1602,7 @@ class BcfReader
     BcfReader(const std::string & file, const std::string & region, const std::string & samples) : fname(file)
     {
         open(file);
-        if(!region.empty()) setRegion(region);
+        if(file != "-" && !region.empty()) setRegion(region);
         if(!samples.empty()) setSamples(samples);
     }
 
@@ -1633,6 +1633,7 @@ class BcfReader
         header.hdr = bcf_hdr_read(fp.get());
         nsamples = bcf_hdr_nsamples(header.hdr);
         SamplesName = header.getSamples();
+        if(file == "-") return;
         if(isBcf)
         {
             hidx = std::shared_ptr<hts_idx_t>(bcf_index_load(fname.c_str()), details::hts_idx_close());

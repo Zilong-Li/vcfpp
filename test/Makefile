@@ -7,9 +7,9 @@ LDFLAGS  =  -L$(HTSLIB) -Wl,-rpath,$(HTSLIB)
 LIBS     = -lhts -lz -lm -lbz2 -llzma -lcurl -lpthread
 INC      = -I. -I.. -I${HTSINC}
 
-OBJS = test-main.o bcf-variant.o bcf-reader.o bcf-writer.o example.o
+OBJS = test-main.o bcf-variant.o bcf-reader.o bcf-writer.o read-stdin.o
 
-BINS = bcf-variant.bin bcf-reader.bin bcf-writer.bin example.bin
+BINS = bcf-variant.bin bcf-reader.bin bcf-writer.bin read-stdin
 
 .PHONY: all test clean
 
@@ -23,10 +23,14 @@ test: $(BINS) $(OBJS)
 %.bin: %.o test-main.o
 	${CXX} ${CXXFLAGS} -o $@ $< test-main.o $(LDFLAGS) $(LIBS)
 
+read-stdin: read-stdin.o 
+	${CXX} ${CXXFLAGS} -o $@ $< $(LDFLAGS) $(LIBS)
+
 clean:
-	rm -f *.o *.bin
+	rm -f *.o *.bin read-stdin
 
 test:
+	cat test-vcf-read.vcf | ./read-stdin
 	./bcf-reader.bin --success 2> /dev/null
 	./bcf-writer.bin --success 2> /dev/null
 	./bcf-variant.bin --success 2> /dev/null
