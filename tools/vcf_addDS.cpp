@@ -35,8 +35,8 @@ int main(int argc, char * argv[])
     }
     // ========= core calculation part ===========================================
     BcfReader vcf(invcf, region, samples);
-    BcfWriter bw(outvcf);
-    bw.copyHeader(invcf, samples);
+    BcfWriter bw(outvcf, vcf.header);
+    bw.header.addSample(samples);
     bw.header.addFORMAT("DS", "1", "Float", "Diploid Genotype Dosage"); // add DS tag into the header
     int nsamples = vcf.nsamples;
     vector<float> gps, ds(nsamples);

@@ -2,9 +2,9 @@
  * @file        https://github.com/Zilong-Li/vcfpp/vcfpp.h
  * @author      Zilong Li
  * @email       zilong.dk@gmail.com
- * @version     v0.6.4
+ * @version     v0.7.0
  * @breif       a single C++ file for manipulating VCF
- * Copyright (C) 2022-2023.The use of this code is governed by the LICENSE file.
+ * Copyright (C) 2022-2025.The use of this code is governed by the LICENSE file.
  ******************************************************************************/
 
 /*! \mainpage The documentation of the single C++ file *vcfpp.h* for manipulating VCF/BCF
@@ -222,8 +222,8 @@ class BcfHeader
     friend class BcfWriter;
 
   private:
-    bcf_hdr_t * hdr = nullptr; // bcf header
     bcf_hrec_t * hrec = nullptr; // populate header
+    std::shared_ptr<bcf_hdr_t> hdr; // bcf header
 
   public:
     BcfHeader() = default;
@@ -231,7 +231,27 @@ class BcfHeader
     ~BcfHeader()
     {
         if(hrec) bcf_hrec_destroy(hrec);
-        if(hdr) bcf_hdr_destroy(hdr);
+    }
+
+    /// initial a VCF header using the internal template given a specific version.
+    BcfHeader(std::string version)
+    {
+        auto h = bcf_hdr_init("w");
+        hdr = std::shared_ptr<bcf_hdr_t>(bcf_hdr_dup(h), details::bcf_hdr_close());
+        bcf_hdr_destroy(h);
+        bcf_hdr_set_version(hdr.get(), version.c_str());
+    }
+
+    /// make a copy from existing header
+    BcfHeader(const bcf_hdr_t * h)
+    {
+        hdr = std::shared_ptr<bcf_hdr_t>(bcf_hdr_dup(h), details::bcf_hdr_close());
+    }
+
+    /** @brief Return the raw bcf_hdr_t */
+    bcf_hdr_t * get() const
+    {
+        return hdr.get();
     }
 
     /** @brief stream out the header */
@@ -297,17 +317,17 @@ class BcfHeader
     inline void addLine(const std::string & str)
     {
         int ret = 0;
-        ret = bcf_hdr_append(hdr, str.c_str());
+        ret = bcf_hdr_append(hdr.get(), str.c_str());
         if(ret != 0) throw std::runtime_error("could not add " + str + " to header\n");
-        ret = bcf_hdr_sync(hdr);
+        ret = bcf_hdr_sync(hdr.get());
         if(ret != 0) throw std::runtime_error("could not add " + str + " to header\n");
     }
 
     /** @brief add one sample name to header */
     inline void addSample(const std::string & sample) const
     {
-        bcf_hdr_add_sample(hdr, sample.c_str());
-        if(bcf_hdr_sync(hdr) != 0)
+        bcf_hdr_add_sample(hdr.get(), sample.c_str());
+        if(bcf_hdr_sync(hdr.get()) != 0)
         {
             throw std::runtime_error("couldn't add the sample.\n");
         }
@@ -317,7 +337,7 @@ class BcfHeader
     inline std::string asString() const
     {
         kstring_t s = {0, 0, nullptr}; // kstring
-        if(bcf_hdr_format(hdr, 0, &s) == 0) // append header string to s.s! append!
+        if(bcf_hdr_format(hdr.get(), 0, &s) == 0) // append header string to s.s! append!
         {
             std::string out(s.s, s.l);
             free(s.s);
@@ -344,7 +364,7 @@ class BcfHeader
     std::vector<std::string> getSeqnames() const
     {
         int ret = 0;
-        const char ** seqs = bcf_hdr_seqnames(hdr, &ret);
+        const char ** seqs = bcf_hdr_seqnames(hdr.get(), &ret);
         if(ret == 0) printf("there is no contig id in the header!\n");
         std::vector<std::string> vec;
         for(int i = 0; i < ret; i++)
@@ -362,7 +382,7 @@ class BcfHeader
      */
     inline int getFormatType(std::string tag) const
     {
-        int tag_id = bcf_hdr_id2int(hdr, BCF_DT_ID, tag.c_str());
+        int tag_id = bcf_hdr_id2int(hdr.get(), BCF_DT_ID, tag.c_str());
         if(tag_id < 0) return 0;
         if(bcf_hdr_id2type(hdr, BCF_HL_FMT, tag_id) == (BCF_HT_INT & 0xff))
         {
@@ -385,25 +405,25 @@ class BcfHeader
     /** @brief remove a contig tag from header */
     inline void removeContig(std::string tag) const
     {
-        bcf_hdr_remove(hdr, BCF_HL_CTG, tag.c_str());
+        bcf_hdr_remove(hdr.get(), BCF_HL_CTG, tag.c_str());
     }
 
     /** @brief remove a INFO tag from header */
     inline void removeInfo(std::string tag) const
     {
-        bcf_hdr_remove(hdr, BCF_HL_INFO, tag.c_str());
+        bcf_hdr_remove(hdr.get(), BCF_HL_INFO, tag.c_str());
     }
 
     /** @brief remove a FORMAT tag from header */
     inline void removeFormat(std::string tag) const
     {
-        bcf_hdr_remove(hdr, BCF_HL_FMT, tag.c_str());
+        bcf_hdr_remove(hdr.get(), BCF_HL_FMT, tag.c_str());
     }
 
     /** @brief remove a FILTER tag from header */
     inline void removeFilter(std::string tag) const
     {
-        bcf_hdr_remove(hdr, BCF_HL_FLT, tag.c_str());
+        bcf_hdr_remove(hdr.get(), BCF_HL_FLT, tag.c_str());
     }
 
     /**
@@ -418,7 +438,7 @@ class BcfHeader
         if(nsamples != (int)ss.size())
             throw std::runtime_error("You provide either too few or too many samples");
         kstring_t htxt = {0, 0, nullptr};
-        bcf_hdr_format(hdr, 1, &htxt);
+        bcf_hdr_format(hdr.get(), 1, &htxt);
         // Find the beginning of the #CHROM line
         int i = htxt.l - 2, ncols = 0;
         while(i >= 0 && htxt.s[i] != '\n')
@@ -449,12 +469,13 @@ class BcfHeader
         }
         kputc('\n', &htxt);
 
-        // destroy the old and make new header
-        bcf_hdr_destroy(hdr);
-        hdr = bcf_hdr_init("r");
-        if(bcf_hdr_parse(hdr, htxt.s) < 0)
+        auto h = bcf_hdr_init("r");
+        if(bcf_hdr_parse(h, htxt.s) < 0)
             throw std::runtime_error("An error occurred while parsing the header\n");
+        // destroy the old and make new header
+        hdr = std::shared_ptr<bcf_hdr_t>(bcf_hdr_dup(h), details::bcf_hdr_close()); // deep copy
         // free everything
+        bcf_hdr_destroy(h);
         free(htxt.s);
     }
 
@@ -465,7 +486,7 @@ class BcfHeader
     inline void setSamples(const std::string & samples) const
     {
         int ret = 0;
-        ret = bcf_hdr_set_samples(hdr, samples.c_str(), 0);
+        ret = bcf_hdr_set_samples(hdr.get(), samples.c_str(), 0);
         if(ret != 0)
         {
             throw std::runtime_error("the " + std::to_string(ret)
@@ -476,7 +497,7 @@ class BcfHeader
     /** @brief set the VCF version */
     inline void setVersion(const std::string & version) const
     {
-        bcf_hdr_set_version(hdr, version.c_str());
+        bcf_hdr_set_version(hdr.get(), version.c_str());
     }
 
     /** @brief return the number of samples in the VCF */
@@ -498,8 +519,8 @@ class BcfRecord
     friend class BcfWriter;
 
   private:
-    BcfHeader * header;
     std::shared_ptr<bcf1_t> line = std::shared_ptr<bcf1_t>(bcf_init(), details::bcf_line_close()); // variant
+    BcfHeader * header = nullptr; // header the record is linked to
     bcf_hdr_t * hdr_d = nullptr; // a dup header by bcf_hdr_dup(header->hdr)
     bcf_fmt_t * fmt = nullptr;
     bcf_info_t * info = nullptr;
@@ -557,7 +578,7 @@ class BcfRecord
     inline std::string asString() const
     {
         kstring_t s = {0, 0, nullptr}; // kstring
-        if(vcf_format(header->hdr, line.get(), &s) == 0)
+        if(vcf_format(header->hdr.get(), line.get(), &s) == 0)
         {
             std::string out(s.s, s.l);
             free(s.s);
@@ -581,7 +602,7 @@ class BcfRecord
     isValidGT<T> getGenotypes(T & v)
     {
         ndst = 0;
-        ret = bcf_get_genotypes(header->hdr, line.get(), &gts, &ndst);
+        ret = bcf_get_genotypes(header->hdr.get(), line.get(), &gts, &ndst);
         if(ret <= 0)
         {
 #    if defined(VERBOSE)
@@ -589,8 +610,7 @@ class BcfRecord
 #    endif
             return false;
         }
-        // if nploidy is not set manually. find the max nploidy using the first variant (eg. 2) resize v as
-        // max(nploidy)
+        // find the max nploidy using the first variant (eg. 2) resize v as max(nploidy)
         // * nsamples (ret) NOTE: if ret == nsamples and only one sample then haploid
         if(ret != nploidy * nsamples && nploidy > 0)
         {
@@ -603,11 +623,11 @@ class BcfRecord
             v.resize(ret);
             nploidy = ret / nsamples;
         }
-        // work with nploidy == 1, haploid?
+        // TODO: work with nploidy == 1, haploid?
         isGenoMissing.assign(nsamples, 0);
         int i, j, nphased = 0;
         noneMissing = true;
-        fmt = bcf_get_fmt(header->hdr, line.get(), "GT");
+        fmt = bcf_get_fmt(header->hdr.get(), line.get(), "GT");
         int nploidy_cur = ret / nsamples; // requires nploidy_cur <= nploidy
         for(i = 0; i < nsamples; i++)
         {
@@ -654,7 +674,7 @@ class BcfRecord
     bool getGenotypes(std::vector<int> & v)
     {
         ndst = 0;
-        ret = bcf_get_genotypes(header->hdr, line.get(), &gts, &ndst);
+        ret = bcf_get_genotypes(header->hdr.get(), line.get(), &gts, &ndst);
         if(ret <= 0)
         {
 #    if defined(VERBOSE)
@@ -712,7 +732,7 @@ class BcfRecord
     template<typename T, typename S = typename T::value_type>
     isFormatVector<T> getFORMAT(std::string tag, T & v)
     {
-        fmt = bcf_get_fmt(header->hdr, line.get(), tag.c_str());
+        fmt = bcf_get_fmt(header->hdr.get(), line.get(), tag.c_str());
         if(!fmt)
         {
             throw std::invalid_argument("no FORMAT=" + tag + " in the VCF header.\n");
@@ -723,15 +743,15 @@ class BcfRecord
         int tagid = header->getFormatType(tag);
         if(tagid == 1)
         {
-            ret = bcf_get_format_int32(header->hdr, line.get(), tag.c_str(), &dst, &ndst);
+            ret = bcf_get_format_int32(header->hdr.get(), line.get(), tag.c_str(), &dst, &ndst);
         }
         else if(tagid == 2)
         {
-            ret = bcf_get_format_float(header->hdr, line.get(), tag.c_str(), &dst, &ndst);
+            ret = bcf_get_format_float(header->hdr.get(), line.get(), tag.c_str(), &dst, &ndst);
         }
         else if(tagid == 3)
         {
-            ret = bcf_get_format_char(header->hdr, line.get(), tag.c_str(), &dst, &ndst);
+            ret = bcf_get_format_char(header->hdr.get(), line.get(), tag.c_str(), &dst, &ndst);
         }
         else
         {
@@ -760,7 +780,7 @@ class BcfRecord
      * */
     bool getFORMAT(std::string tag, std::vector<std::string> & v)
     {
-        fmt = bcf_get_fmt(header->hdr, line.get(), tag.c_str());
+        fmt = bcf_get_fmt(header->hdr.get(), line.get(), tag.c_str());
         if(!fmt)
         {
             throw std::invalid_argument("no FORMAT=" + tag + " in the VCF header.\n");
@@ -770,7 +790,7 @@ class BcfRecord
         ret = -1, ndst = 0;
         char ** dst = nullptr;
         if(header->getFormatType(tag) == 3)
-            ret = bcf_get_format_string(header->hdr, line.get(), tag.c_str(), &dst, &ndst);
+            ret = bcf_get_format_string(header->hdr.get(), line.get(), tag.c_str(), &dst, &ndst);
         if(ret > 0)
         {
             v.clear();
@@ -800,7 +820,7 @@ class BcfRecord
     template<typename T, typename S = typename T::value_type>
     isInfoVector<T> getINFO(std::string tag, T & v)
     {
-        info = bcf_get_info(header->hdr, line.get(), tag.c_str());
+        info = bcf_get_info(header->hdr.get(), line.get(), tag.c_str());
         if(!info)
         {
             throw std::invalid_argument("no INFO=" + tag + " in the VCF header.\n");
@@ -810,11 +830,11 @@ class BcfRecord
         ret = -1;
         if(info->type == BCF_BT_INT8 || info->type == BCF_BT_INT16 || info->type == BCF_BT_INT32)
         {
-            ret = bcf_get_info_int32(header->hdr, line.get(), tag.c_str(), &dst, &ndst);
+            ret = bcf_get_info_int32(header->hdr.get(), line.get(), tag.c_str(), &dst, &ndst);
         }
         else if(info->type == BCF_BT_FLOAT)
         {
-            ret = bcf_get_info_float(header->hdr, line.get(), tag.c_str(), &dst, &ndst);
+            ret = bcf_get_info_float(header->hdr.get(), line.get(), tag.c_str(), &dst, &ndst);
         }
         if(ret >= 0)
         {
@@ -838,7 +858,7 @@ class BcfRecord
     template<typename T>
     isScalar<T> getINFO(std::string tag, T & v)
     {
-        info = bcf_get_info(header->hdr, line.get(), tag.c_str());
+        info = bcf_get_info(header->hdr.get(), line.get(), tag.c_str());
         if(!info)
         {
             throw std::invalid_argument("no INFO=" + tag + " in the VCF header.\n");
@@ -875,7 +895,7 @@ class BcfRecord
     template<typename T>
     isString<T> getINFO(std::string tag, T & v)
     {
-        info = bcf_get_info(header->hdr, line.get(), tag.c_str());
+        info = bcf_get_info(header->hdr.get(), line.get(), tag.c_str());
         if(!info)
         {
             throw std::invalid_argument("no INFO=" + tag + " in the VCF header.\n");
@@ -902,15 +922,15 @@ class BcfRecord
     {
         // bcf_hrec_set_val
         // bcf_update_info_flag(header.hdr, line, tag.c_str(), NULL, 1);
-        int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
-        if(bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_INT & 0xff))
+        int tag_id = bcf_hdr_id2int(header->hdr.get(), BCF_DT_ID, tag.c_str());
+        if(bcf_hdr_id2type(header->hdr.get(), BCF_HL_INFO, tag_id) == (BCF_HT_INT & 0xff))
         {
-            ret = bcf_update_info_int32(header->hdr, line.get(), tag.c_str(), &v, 1);
+            ret = bcf_update_info_int32(header->hdr.get(), line.get(), tag.c_str(), &v, 1);
         }
-        else if(bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_REAL & 0xff))
+        else if(bcf_hdr_id2type(header->hdr.get(), BCF_HL_INFO, tag_id) == (BCF_HT_REAL & 0xff))
         {
             float v2 = static_cast<float>(v);
-            ret = bcf_update_info_float(header->hdr, line.get(), tag.c_str(), &v2, 1);
+            ret = bcf_update_info_float(header->hdr.get(), line.get(), tag.c_str(), &v2, 1);
         }
         else
         {
@@ -936,18 +956,18 @@ class BcfRecord
     isValidInfo<T> setINFO(std::string tag, const T & v)
     {
         // bcf_update_info_flag(header.hdr, line, tag.c_str(), NULL, 1);
-        int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
-        if(bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_INT & 0xff))
+        int tag_id = bcf_hdr_id2int(header->hdr.get(), BCF_DT_ID, tag.c_str());
+        if(bcf_hdr_id2type(header->hdr.get(), BCF_HL_INFO, tag_id) == (BCF_HT_INT & 0xff))
         {
-            ret = bcf_update_info_int32(header->hdr, line.get(), tag.c_str(), v.data(), v.size());
+            ret = bcf_update_info_int32(header->hdr.get(), line.get(), tag.c_str(), v.data(), v.size());
         }
-        else if(bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_REAL & 0xff))
+        else if(bcf_hdr_id2type(header->hdr.get(), BCF_HL_INFO, tag_id) == (BCF_HT_REAL & 0xff))
         {
-            ret = bcf_update_info_float(header->hdr, line.get(), tag.c_str(), v.data(), v.size());
+            ret = bcf_update_info_float(header->hdr.get(), line.get(), tag.c_str(), v.data(), v.size());
         }
-        else if(bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_STR & 0xff))
+        else if(bcf_hdr_id2type(header->hdr.get(), BCF_HL_INFO, tag_id) == (BCF_HT_STR & 0xff))
         {
-            ret = bcf_update_info_string(header->hdr, line.get(), tag.c_str(), v.data());
+            ret = bcf_update_info_string(header->hdr.get(), line.get(), tag.c_str(), v.data());
         }
         else
         {
@@ -967,18 +987,18 @@ class BcfRecord
     /// remove the given tag from INFO of the variant
     void removeINFO(std::string tag)
     {
-        int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
-        if(bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_INT & 0xff))
+        int tag_id = bcf_hdr_id2int(header->hdr.get(), BCF_DT_ID, tag.c_str());
+        if(bcf_hdr_id2type(header->hdr.get(), BCF_HL_INFO, tag_id) == (BCF_HT_INT & 0xff))
         {
-            ret = bcf_update_info_int32(header->hdr, line.get(), tag.c_str(), NULL, 0);
+            ret = bcf_update_info_int32(header->hdr.get(), line.get(), tag.c_str(), NULL, 0);
         }
-        else if(bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_REAL & 0xff))
+        else if(bcf_hdr_id2type(header->hdr.get(), BCF_HL_INFO, tag_id) == (BCF_HT_REAL & 0xff))
         {
-            ret = bcf_update_info_float(header->hdr, line.get(), tag.c_str(), NULL, 0);
+            ret = bcf_update_info_float(header->hdr.get(), line.get(), tag.c_str(), NULL, 0);
         }
-        else if(bcf_hdr_id2type(header->hdr, BCF_HL_INFO, tag_id) == (BCF_HT_STR & 0xff))
+        else if(bcf_hdr_id2type(header->hdr.get(), BCF_HL_INFO, tag_id) == (BCF_HT_STR & 0xff))
         {
-            ret = bcf_update_info_string(header->hdr, line.get(), tag.c_str(), NULL);
+            ret = bcf_update_info_string(header->hdr.get(), line.get(), tag.c_str(), NULL);
         }
         else
         {
@@ -1021,7 +1041,7 @@ class BcfRecord
                 }
             }
         }
-        if(bcf_update_genotypes(header->hdr, line.get(), gt, v.size()) < 0)
+        if(bcf_update_genotypes(header->hdr.get(), line.get(), gt, v.size()) < 0)
         {
             free(gt);
 #    if defined(VERBOSE)
@@ -1048,18 +1068,18 @@ class BcfRecord
     void removeFORMAT(std::string tag)
     {
         ret = -1;
-        int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
-        if(bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_INT & 0xff))
+        int tag_id = bcf_hdr_id2int(header->hdr.get(), BCF_DT_ID, tag.c_str());
+        if(bcf_hdr_id2type(header->hdr.get(), BCF_HL_FMT, tag_id) == (BCF_HT_INT & 0xff))
         {
-            ret = bcf_update_format_int32(header->hdr, line.get(), tag.c_str(), NULL, 0);
+            ret = bcf_update_format_int32(header->hdr.get(), line.get(), tag.c_str(), NULL, 0);
         }
-        else if(bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_STR & 0xff))
+        else if(bcf_hdr_id2type(header->hdr.get(), BCF_HL_FMT, tag_id) == (BCF_HT_STR & 0xff))
         {
-            ret = bcf_update_format_char(header->hdr, line.get(), tag.c_str(), NULL, 0);
+            ret = bcf_update_format_char(header->hdr.get(), line.get(), tag.c_str(), NULL, 0);
         }
-        else if(bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_REAL & 0xff))
+        else if(bcf_hdr_id2type(header->hdr.get(), BCF_HL_FMT, tag_id) == (BCF_HT_REAL & 0xff))
         {
-            ret = bcf_update_format_float(header->hdr, line.get(), tag.c_str(), NULL, 0);
+            ret = bcf_update_format_float(header->hdr.get(), line.get(), tag.c_str(), NULL, 0);
         }
 
         if(ret < 0) throw std::runtime_error("couldn't remove " + tag + " correctly.\n");
@@ -1074,18 +1094,18 @@ class BcfRecord
     template<typename T>
     isValidFMT<T> setFORMAT(std::string tag, const T & v)
     {
-        int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
-        if(bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_INT & 0xff))
+        int tag_id = bcf_hdr_id2int(header->hdr.get(), BCF_DT_ID, tag.c_str());
+        if(bcf_hdr_id2type(header->hdr.get(), BCF_HL_FMT, tag_id) == (BCF_HT_INT & 0xff))
         {
-            ret = bcf_update_format_int32(header->hdr, line.get(), tag.c_str(), v.data(), v.size());
+            ret = bcf_update_format_int32(header->hdr.get(), line.get(), tag.c_str(), v.data(), v.size());
         }
-        else if(bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_STR & 0xff))
+        else if(bcf_hdr_id2type(header->hdr.get(), BCF_HL_FMT, tag_id) == (BCF_HT_STR & 0xff))
         {
-            ret = bcf_update_format_char(header->hdr, line.get(), tag.c_str(), v.data(), v.size());
+            ret = bcf_update_format_char(header->hdr.get(), line.get(), tag.c_str(), v.data(), v.size());
         }
-        else if(bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_REAL & 0xff))
+        else if(bcf_hdr_id2type(header->hdr.get(), BCF_HL_FMT, tag_id) == (BCF_HT_REAL & 0xff))
         {
-            ret = bcf_update_format_float(header->hdr, line.get(), tag.c_str(), v.data(), v.size());
+            ret = bcf_update_format_float(header->hdr.get(), line.get(), tag.c_str(), v.data(), v.size());
         }
         else
         {
@@ -1113,14 +1133,14 @@ class BcfRecord
     isScalar<T> setFORMAT(std::string tag, const T & v)
     {
         float v2 = v;
-        int tag_id = bcf_hdr_id2int(header->hdr, BCF_DT_ID, tag.c_str());
-        if(bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_INT & 0xff))
+        int tag_id = bcf_hdr_id2int(header->hdr.get(), BCF_DT_ID, tag.c_str());
+        if(bcf_hdr_id2type(header->hdr.get(), BCF_HL_FMT, tag_id) == (BCF_HT_INT & 0xff))
         {
-            ret = bcf_update_format_int32(header->hdr, line.get(), tag.c_str(), &v, 1);
+            ret = bcf_update_format_int32(header->hdr.get(), line.get(), tag.c_str(), &v, 1);
         }
-        else if(bcf_hdr_id2type(header->hdr, BCF_HL_FMT, tag_id) == (BCF_HT_REAL & 0xff))
+        else if(bcf_hdr_id2type(header->hdr.get(), BCF_HL_FMT, tag_id) == (BCF_HT_REAL & 0xff))
         {
-            ret = bcf_update_format_float(header->hdr, line.get(), tag.c_str(), &v2, 1);
+            ret = bcf_update_format_float(header->hdr.get(), line.get(), tag.c_str(), &v2, 1);
         }
         else
         {
@@ -1141,19 +1161,19 @@ class BcfRecord
     {
         kstring_t s = {0, 0, nullptr};
         kputsn(vcfline.c_str(), vcfline.length(), &s);
-        ret = vcf_parse1(&s, header->hdr, line.get());
+        ret = vcf_parse1(&s, header->hdr.get(), line.get());
         free(s.s);
         if(ret > 0) throw std::runtime_error("error parsing: " + vcfline + "\n");
         if(line->errcode == BCF_ERR_CTG_UNDEF)
         {
-            std::string contig(bcf_hdr_id2name(header->hdr, line->rid));
-            hdr_d = bcf_hdr_dup(header->hdr);
+            std::string contig(bcf_hdr_id2name(header->hdr.get(), line->rid));
+            hdr_d = bcf_hdr_dup(header->hdr.get());
             header->hrec = bcf_hdr_id2hrec(hdr_d, BCF_DT_CTG, 0, line->rid);
             if(header->hrec == nullptr)
                 throw std::runtime_error("contig" + contig + " unknow and not found in the header.\n");
-            ret = bcf_hdr_add_hrec(header->hdr, header->hrec);
+            ret = bcf_hdr_add_hrec(header->hdr.get(), header->hrec);
             if(ret < 0) throw std::runtime_error("error adding contig " + contig + " to header.\n");
-            ret = bcf_hdr_sync(header->hdr);
+            ret = bcf_hdr_sync(header->hdr.get());
         }
     }
 
@@ -1166,7 +1186,7 @@ class BcfRecord
     /** @brief return boolean value indicates if current variant is Structual Variant or not */
     inline bool isSV() const
     {
-        if(bcf_get_info(header->hdr, line.get(), "SVTYPE") == nullptr)
+        if(bcf_get_info(header->hdr.get(), line.get(), "SVTYPE") == nullptr)
         {
             return false;
         }
@@ -1303,7 +1323,7 @@ class BcfRecord
     /** @brief return CHROM name */
     inline std::string CHROM() const
     {
-        return std::string(bcf_hdr_id2name(header->hdr, line->rid));
+        return std::string(bcf_hdr_id2name(header->hdr.get(), line->rid));
     }
 
     /** @brief return ID field */
@@ -1321,7 +1341,7 @@ class BcfRecord
     /** @brief modify CHROM value */
     inline void setCHR(const std::string & s)
     {
-        line->rid = bcf_hdr_name2id(header->hdr, s.c_str());
+        line->rid = bcf_hdr_name2id(header->hdr.get(), s.c_str());
     }
 
     /** @brief modify position given 1-based value */
@@ -1333,13 +1353,13 @@ class BcfRecord
     /** @brief update ID */
     inline void setID(const std::string & s)
     {
-        bcf_update_id(header->hdr, line.get(), s.c_str());
+        bcf_update_id(header->hdr.get(), line.get(), s.c_str());
     }
 
     /** @brief set REF and ALT alleles given a string seperated by comma */
     inline void setRefAlt(const std::string & s)
     {
-        bcf_update_alleles_str(header->hdr, line.get(), s.c_str());
+        bcf_update_alleles_str(header->hdr.get(), line.get(), s.c_str());
     }
 
     /** @brief modify the QUAL value */
@@ -1357,8 +1377,8 @@ class BcfRecord
     /** @brief modify the FILTER value */
     inline void setFILTER(const std::string & s)
     {
-        int32_t tmpi = bcf_hdr_id2int(header->hdr, BCF_DT_ID, s.c_str());
-        bcf_add_filter(header->hdr, line.get(), tmpi);
+        int32_t tmpi = bcf_hdr_id2int(header->hdr.get(), BCF_DT_ID, s.c_str());
+        bcf_add_filter(header->hdr.get(), line.get(), tmpi);
     }
 
     /** @brief return 0-base start of the variant (can be any type) */
@@ -1420,14 +1440,14 @@ class BcfRecord
         }
         else if(line->d.n_flt == 1)
         {
-            return std::string(bcf_hdr_int2id(header->hdr, BCF_DT_ID, line->d.flt[0]));
+            return std::string(bcf_hdr_int2id(header->hdr.get(), BCF_DT_ID, line->d.flt[0]));
         }
         else
         {
             std::string s;
             for(int i = 1; i < line->d.n_flt; i++)
             {
-                s += std::string(bcf_hdr_int2id(header->hdr, BCF_DT_ID, line->d.flt[i])) + ",";
+                s += std::string(bcf_hdr_int2id(header->hdr.get(), BCF_DT_ID, line->d.flt[i])) + ",";
             }
             s.pop_back();
             return s;
@@ -1585,7 +1605,7 @@ class BcfReader
     BcfReader(const std::string & file, const std::string & region) : fname(file)
     {
         open(file);
-        if(!region.empty()) setRegion(region);
+        if(file != "-" && !region.empty()) setRegion(region);
         SamplesName = header.getSamples();
     }
 
@@ -1602,7 +1622,7 @@ class BcfReader
     BcfReader(const std::string & file, const std::string & region, const std::string & samples) : fname(file)
     {
         open(file);
-        if(!region.empty()) setRegion(region);
+        if(file != "-" && !region.empty()) setRegion(region);
         if(!samples.empty()) setSamples(samples);
     }
 
@@ -1630,9 +1650,12 @@ class BcfReader
         if(!fp) throw std::invalid_argument("I/O error: input file is invalid");
         enum htsExactFormat hts_format = hts_get_format(fp.get())->format;
         if(hts_format == bcf) isBcf = true;
-        header.hdr = bcf_hdr_read(fp.get());
-        nsamples = bcf_hdr_nsamples(header.hdr);
+        auto h = bcf_hdr_read(fp.get());
+        header = BcfHeader(h); // make a deep copy
+        bcf_hdr_destroy(h);
+        nsamples = header.nSamples();
         SamplesName = header.getSamples();
+        if(file == "-") return;
         if(isBcf)
         {
             hidx = std::shared_ptr<hts_idx_t>(bcf_index_load(fname.c_str()), details::hts_idx_close());
@@ -1647,12 +1670,6 @@ class BcfReader
     inline int setThreads(int n)
     {
         return hts_set_threads(fp.get(), n);
-    }
-
-    /// return a BcfHeader object
-    const BcfHeader & getHeader() const
-    {
-        return header;
     }
 
     /**
@@ -1724,10 +1741,10 @@ class BcfReader
         {
             if(itr) itr.reset(); // reset current region.
             if(region.empty())
-                itr = std::shared_ptr<hts_itr_t>(bcf_itr_querys(hidx.get(), header.hdr, "."),
+                itr = std::shared_ptr<hts_itr_t>(bcf_itr_querys(hidx.get(), header.hdr.get(), "."),
                                                  details::hts_iter_close());
             else
-                itr = std::shared_ptr<hts_itr_t>(bcf_itr_querys(hidx.get(), header.hdr, region.c_str()),
+                itr = std::shared_ptr<hts_itr_t>(bcf_itr_querys(hidx.get(), header.hdr.get(), region.c_str()),
                                                  details::hts_iter_close());
         }
         else
@@ -1754,7 +1771,7 @@ class BcfReader
             if(isBcf)
             {
                 ret = bcf_itr_next(fp.get(), itr.get(), r.line.get());
-                bcf_subset_format(r.header->hdr, r.line.get()); // has to be called explicitly for bcf
+                bcf_subset_format(r.header->hdr.get(), r.line.get()); // has to be called explicitly for bcf
                 bcf_unpack(r.line.get(), BCF_UN_ALL);
                 return (ret >= 0);
             }
@@ -1763,7 +1780,7 @@ class BcfReader
                 int slen = tbx_itr_next(fp.get(), tidx.get(), itr.get(), &s);
                 if(slen > 0)
                 {
-                    ret = vcf_parse1(&s, r.header->hdr, r.line.get()); // ret > 0, error
+                    ret = vcf_parse1(&s, r.header->hdr.get(), r.line.get()); // ret > 0, error
                     bcf_unpack(r.line.get(), BCF_UN_ALL);
                 }
                 return (ret <= 0) && (slen > 0);
@@ -1771,7 +1788,7 @@ class BcfReader
         }
         else
         {
-            ret = bcf_read(fp.get(), r.header->hdr, r.line.get());
+            ret = bcf_read(fp.get(), r.header->hdr.get(), r.line.get());
             // unpack record immediately. not lazy
             bcf_unpack(r.line.get(), BCF_UN_ALL);
             return (ret == 0);
@@ -1790,7 +1807,7 @@ class BcfWriter
     std::shared_ptr<bcf1_t> b = std::shared_ptr<bcf1_t>(bcf_init(), details::bcf_line_close()); // variant
     int ret;
     bool isHeaderWritten = false;
-    const BcfHeader * hp;
+    // std::shared_ptr<BcfHeader> hp;
 
   public:
     /// header object initialized by initalHeader
@@ -1807,8 +1824,7 @@ class BcfWriter
     BcfWriter(const std::string & fname, std::string version = "VCF4.1")
     {
         open(fname);
-        initalHeader(version);
-        initalHeader(header);
+        header = BcfHeader(version);
     }
 
     /**
@@ -1835,8 +1851,7 @@ class BcfWriter
     BcfWriter(const std::string & fname, const std::string & version, const std::string & mode)
     {
         open(fname, mode);
-        initalHeader(version);
-        initalHeader(header);
+        header = BcfHeader(version);
     }
 
     /**
@@ -1891,38 +1906,10 @@ class BcfWriter
         if(fp) fp.reset();
     }
 
-    /// initial a VCF header using the internal template given a specific version. VCF4.1 is the default
-    void initalHeader(std::string version = "VCF4.1")
-    {
-        header.hdr = bcf_hdr_init("w");
-        header.setVersion(version);
-    }
-
     /// initial a VCF header by pointing to header of another VCF
     void initalHeader(const BcfHeader & h)
     {
-        hp = &h;
-    }
-
-    /// copy header of given VCF and restrict on samples. if samples=="", FORMAT removed and only sites left
-    void copyHeader(const std::string & vcffile, std::string samples = "-")
-    {
-        htsFile * fp2 = hts_open(vcffile.c_str(), "r");
-        if(!fp2) throw std::invalid_argument("I/O error: input file is invalid");
-        if(samples == "")
-        { // site-only
-            bcf_hdr_t * hfull = bcf_hdr_read(fp2);
-            header.hdr = bcf_hdr_subset(hfull, 0, nullptr, nullptr);
-            bcf_hdr_remove(header.hdr, BCF_HL_FMT, nullptr);
-            bcf_hdr_destroy(hfull);
-        }
-        else
-        {
-            header.hdr = bcf_hdr_read(fp2);
-            header.setSamples(samples);
-        }
-        hts_close(fp2);
-        initalHeader(header);
+        header = h;
     }
 
     /// copy a string to a vcf line
@@ -1931,22 +1918,22 @@ class BcfWriter
         if(!isHeaderWritten && !writeHeader()) throw std::runtime_error("could not write header\n");
         kstring_t s = {0, 0, nullptr};
         kputsn(vcfline.c_str(), vcfline.length(), &s);
-        ret = vcf_parse1(&s, hp->hdr, b.get());
+        ret = vcf_parse1(&s, header.hdr.get(), b.get());
         free(s.s);
         if(ret > 0) throw std::runtime_error("error parsing: " + vcfline + "\n");
         if(b->errcode == BCF_ERR_CTG_UNDEF)
         {
-            throw std::runtime_error("contig id " + (std::string)bcf_hdr_id2name(hp->hdr, b->rid)
+            throw std::runtime_error("contig id " + (std::string)bcf_hdr_id2name(header.hdr.get(), b->rid)
                                      + " not found in the header. please run header->AddContig() first.\n");
         }
-        ret = bcf_write(fp.get(), hp->hdr, b.get());
+        ret = bcf_write(fp.get(), header.hdr.get(), b.get());
         if(ret != 0) throw std::runtime_error("error writing: " + vcfline + "\n");
     }
 
     /// streams out the header
     bool writeHeader()
     {
-        ret = bcf_hdr_write(fp.get(), hp->hdr);
+        ret = bcf_hdr_write(fp.get(), header.hdr.get());
         if(ret == 0) return isHeaderWritten = true;
         return false;
     }
@@ -1955,7 +1942,7 @@ class BcfWriter
     bool writeRecord(BcfRecord & v)
     {
         if(!isHeaderWritten) writeHeader();
-        if(bcf_write(fp.get(), v.header->hdr, v.line.get()) < 0) return false;
+        if(bcf_write(fp.get(), v.header->hdr.get(), v.line.get()) < 0) return false;
         return true;
     }
 };

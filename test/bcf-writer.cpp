@@ -57,7 +57,7 @@ TEST_CASE("Write VCF by copying header of another VCF and modifying it", "[bcf-w
     BcfReader br("test-vcf-read.bcf");
     BcfWriter bw;
     bw.open("test-vcf-write.vcf");
-    bw.copyHeader("test-vcf-read.bcf");
+    bw.initalHeader(br.header);
     bw.header.addINFO("AF", "A", "Float", "Estimated allele frequency in the range (0,1)");
     bw.header.updateSamples("X001");
     BcfRecord v(bw.header);

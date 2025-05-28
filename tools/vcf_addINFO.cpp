@@ -36,8 +36,8 @@ int main(int argc, char * argv[])
     }
     // ========= core calculation part ===========================================
     BcfReader vcf(invcf, region, samples);
-    BcfWriter bw(outvcf);
-    bw.copyHeader(invcf, samples);
+    BcfWriter bw(outvcf, vcf.header);
+    bw.header.addSample(samples);
     bw.header.addINFO("INFO", "1", "Float", "INFO score given genotype probability");
     bw.header.addINFO("EAF", "1", "Float", "Estimated Allele Frequency");
     int N = vcf.nsamples, i{0};
