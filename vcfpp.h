@@ -1732,8 +1732,15 @@ class BcfReader
      * @param region the string for region is samtools-like format, which can be 'chr', 'chr:start' and
      * 'chr:start-end'
      * */
-    void setRegion(const std::string & region)
+    void setRegion(std::string region)
     {
+        std::string::size_type n;
+        // if region is chr:pos, turn it into chr:pos-pos
+        if((n = region.find('-')) == std::string::npos)
+        {
+            n = region.find(':');
+            region += "-" + region.substr(n + 1, std::string::npos);
+        }
         // 1. check and load index first
         // 2. query iterval region
         // 3. if region is empty, use "."
