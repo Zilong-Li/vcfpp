@@ -190,6 +190,8 @@ TEST_CASE("can count the number of variants in a valid region", "[bcf-reader]")
     REQUIRE(nVariants == 0);
     nVariants = br.getVariantsCount("chr21:5030089-");
     REQUIRE(nVariants == 13);
+    nVariants = br.getVariantsCount("chr21");
+    REQUIRE(nVariants == 15);
 }
 
 TEST_CASE("can work with chr:pos form", "[bcf-reader]")

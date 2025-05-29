@@ -2,7 +2,7 @@
  * @file        https://github.com/Zilong-Li/vcfpp/vcfpp.h
  * @author      Zilong Li
  * @email       zilong.dk@gmail.com
- * @version     v0.7.0
+ * @version     v0.7.1
  * @breif       a single C++ file for manipulating VCF
  * Copyright (C) 2022-2025.The use of this code is governed by the LICENSE file.
  ******************************************************************************/
@@ -222,16 +222,12 @@ class BcfHeader
     friend class BcfWriter;
 
   private:
-    bcf_hrec_t * hrec = nullptr; // populate header
     std::shared_ptr<bcf_hdr_t> hdr; // bcf header
 
   public:
     BcfHeader() = default;
 
-    ~BcfHeader()
-    {
-        if(hrec) bcf_hrec_destroy(hrec);
-    }
+    ~BcfHeader() = default;
 
     /// initial a VCF header using the internal template given a specific version.
     BcfHeader(std::string version)
@@ -521,11 +517,8 @@ class BcfRecord
   private:
     std::shared_ptr<bcf1_t> line = std::shared_ptr<bcf1_t>(bcf_init(), details::bcf_line_close()); // variant
     BcfHeader * header = nullptr; // header the record is linked to
-    bcf_hdr_t * hdr_d = nullptr; // a dup header by bcf_hdr_dup(header->hdr)
-    bcf_fmt_t * fmt = nullptr;
-    bcf_info_t * info = nullptr;
     int32_t * gts = nullptr;
-    int ndst, ret, nsamples;
+    int32_t ndst, ret, nsamples;
     bool noneMissing = true; // whenever parsing a tag have to reset this variable
     bool isAllPhased = false;
     int nploidy = 0; // the number of ploidy
@@ -548,7 +541,6 @@ class BcfRecord
     ~BcfRecord()
     {
         if(gts) free(gts);
-        if(hdr_d) bcf_hdr_destroy(hdr_d);
     }
 
     /// initilize the header associated with BcfRecord object by pointing to another BcfHeader object
@@ -627,7 +619,7 @@ class BcfRecord
         isGenoMissing.assign(nsamples, 0);
         int i, j, nphased = 0;
         noneMissing = true;
-        fmt = bcf_get_fmt(header->hdr.get(), line.get(), "GT");
+        bcf_fmt_t * fmt = bcf_get_fmt(header->hdr.get(), line.get(), "GT");
         int nploidy_cur = ret / nsamples; // requires nploidy_cur <= nploidy
         for(i = 0; i < nsamples; i++)
         {
@@ -732,7 +724,7 @@ class BcfRecord
     template<typename T, typename S = typename T::value_type>
     isFormatVector<T> getFORMAT(std::string tag, T & v)
     {
-        fmt = bcf_get_fmt(header->hdr.get(), line.get(), tag.c_str());
+        bcf_fmt_t * fmt = bcf_get_fmt(header->hdr.get(), line.get(), tag.c_str());
         if(!fmt)
         {
             throw std::invalid_argument("no FORMAT=" + tag + " in the VCF header.\n");
@@ -780,7 +772,7 @@ class BcfRecord
      * */
     bool getFORMAT(std::string tag, std::vector<std::string> & v)
     {
-        fmt = bcf_get_fmt(header->hdr.get(), line.get(), tag.c_str());
+        bcf_fmt_t * fmt = bcf_get_fmt(header->hdr.get(), line.get(), tag.c_str());
         if(!fmt)
         {
             throw std::invalid_argument("no FORMAT=" + tag + " in the VCF header.\n");
@@ -820,7 +812,7 @@ class BcfRecord
     template<typename T, typename S = typename T::value_type>
     isInfoVector<T> getINFO(std::string tag, T & v)
     {
-        info = bcf_get_info(header->hdr.get(), line.get(), tag.c_str());
+        bcf_info_t * info = bcf_get_info(header->hdr.get(), line.get(), tag.c_str());
         if(!info)
         {
             throw std::invalid_argument("no INFO=" + tag + " in the VCF header.\n");
@@ -858,7 +850,7 @@ class BcfRecord
     template<typename T>
     isScalar<T> getINFO(std::string tag, T & v)
     {
-        info = bcf_get_info(header->hdr.get(), line.get(), tag.c_str());
+        bcf_info_t * info = bcf_get_info(header->hdr.get(), line.get(), tag.c_str());
         if(!info)
         {
             throw std::invalid_argument("no INFO=" + tag + " in the VCF header.\n");
@@ -895,7 +887,7 @@ class BcfRecord
     template<typename T>
     isString<T> getINFO(std::string tag, T & v)
     {
-        info = bcf_get_info(header->hdr.get(), line.get(), tag.c_str());
+        bcf_info_t * info = bcf_get_info(header->hdr.get(), line.get(), tag.c_str());
         if(!info)
         {
             throw std::invalid_argument("no INFO=" + tag + " in the VCF header.\n");
@@ -1167,11 +1159,13 @@ class BcfRecord
         if(line->errcode == BCF_ERR_CTG_UNDEF)
         {
             std::string contig(bcf_hdr_id2name(header->hdr.get(), line->rid));
-            hdr_d = bcf_hdr_dup(header->hdr.get());
-            header->hrec = bcf_hdr_id2hrec(hdr_d, BCF_DT_CTG, 0, line->rid);
-            if(header->hrec == nullptr)
+            auto hdr_d = bcf_hdr_dup(header->hdr.get());
+            auto hrec = bcf_hdr_id2hrec(hdr_d, BCF_DT_CTG, 0, line->rid);
+            bcf_hdr_destroy(hdr_d);
+            if(hrec == nullptr)
                 throw std::runtime_error("contig" + contig + " unknow and not found in the header.\n");
-            ret = bcf_hdr_add_hrec(header->hdr.get(), header->hrec);
+            ret = bcf_hdr_add_hrec(header->hdr.get(), hrec);
+            bcf_hrec_destroy(hrec);
             if(ret < 0) throw std::runtime_error("error adding contig " + contig + " to header.\n");
             ret = bcf_hdr_sync(header->hdr.get());
         }
@@ -1573,7 +1567,6 @@ class BcfReader
     std::shared_ptr<hts_idx_t> hidx; // hts index file
     std::shared_ptr<tbx_t> tidx; // .tbi .csi index file for vcf files
     std::shared_ptr<hts_itr_t> itr; // hts iterator
-    kstring_t s = {0, 0, nullptr}; // kstring
     std::string fname;
     bool isBcf = false; // if the input file is bcf or vcf;
 
@@ -1584,6 +1577,9 @@ class BcfReader
     int nsamples;
     /// a vector of samples name in the VCF
     std::vector<std::string> SamplesName;
+
+  public:
+    ~BcfReader() = default;
 
     /// Construct an empty BcfReader
     BcfReader() = default;
@@ -1624,11 +1620,6 @@ class BcfReader
         open(file);
         if(file != "-" && !region.empty()) setRegion(region);
         if(!samples.empty()) setSamples(samples);
-    }
-
-    ~BcfReader()
-    {
-        if(s.s) free(s.s);
     }
 
     /// Close the VCF file and its associated files
@@ -1738,8 +1729,10 @@ class BcfReader
         // if region is chr:pos, turn it into chr:pos-pos
         if((n = region.find('-')) == std::string::npos)
         {
-            n = region.find(':');
-            region += "-" + region.substr(n + 1, std::string::npos);
+            if((n = region.find(':')) != std::string::npos)
+            {
+                region += "-" + region.substr(n + 1, std::string::npos);
+            }
         }
         // 1. check and load index first
         // 2. query iterval region
@@ -1784,12 +1777,14 @@ class BcfReader
             }
             else
             {
+                kstring_t s = {0, 0, nullptr}; // kstring
                 int slen = tbx_itr_next(fp.get(), tidx.get(), itr.get(), &s);
                 if(slen > 0)
                 {
                     ret = vcf_parse1(&s, r.header->hdr.get(), r.line.get()); // ret > 0, error
                     bcf_unpack(r.line.get(), BCF_UN_ALL);
                 }
+                if(s.s) free(s.s);
                 return (ret <= 0) && (slen > 0);
             }
         }
@@ -1819,6 +1814,9 @@ class BcfWriter
   public:
     /// header object initialized by initalHeader
     BcfHeader header;
+
+  public:
+    ~BcfWriter() = default;
 
     /// Construct an empty BcfWriter
     BcfWriter() = default;
@@ -1876,8 +1874,6 @@ class BcfWriter
         open(fname, mode);
         initalHeader(h);
     }
-
-    ~BcfWriter() = default;
 
     /**
      * @brief          Open VCF/BCF file for writing. The format is infered from file's suffix
