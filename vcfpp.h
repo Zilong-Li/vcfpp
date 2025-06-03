@@ -2,7 +2,7 @@
  * @file        https://github.com/Zilong-Li/vcfpp/vcfpp.h
  * @author      Zilong Li
  * @email       zilong.dk@gmail.com
- * @version     v0.7.1
+ * @version     v0.7.2
  * @breif       a single C++ file for manipulating VCF
  * Copyright (C) 2022-2025.The use of this code is governed by the LICENSE file.
  ******************************************************************************/
@@ -389,6 +389,33 @@ class BcfHeader
             return 2;
         }
         else if(bcf_hdr_id2type(hdr, BCF_HL_FMT, tag_id) == (BCF_HT_STR & 0xff))
+        {
+            return 3;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
+    /**
+     *  @brief get the type of a given tag
+     *  @param tag in the INFO
+     *  @return 1: int; 2: float; 3: string; 0: error; -1: no such tag in INFO
+     */
+    inline int getInfoType(std::string tag) const
+    {
+        int tag_id = bcf_hdr_id2int(hdr.get(), BCF_DT_ID, tag.c_str());
+        if(!bcf_hdr_idinfo_exists(hdr, BCF_HL_INFO, tag_id)) return -1; // no such INFO field in the header
+        if(bcf_hdr_id2type(hdr, BCF_HL_INFO, tag_id) == (BCF_HT_INT & 0xff))
+        {
+            return 1;
+        }
+        else if(bcf_hdr_id2type(hdr, BCF_HL_INFO, tag_id) == (BCF_HT_REAL & 0xff))
+        {
+            return 2;
+        }
+        else if(bcf_hdr_id2type(hdr, BCF_HL_INFO, tag_id) == (BCF_HT_STR & 0xff))
         {
             return 3;
         }

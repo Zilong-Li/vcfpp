@@ -7,9 +7,9 @@ LDFLAGS  =  -L$(HTSLIB) -Wl,-rpath,$(HTSLIB)
 LIBS     = -lhts -lz -lm -lbz2 -llzma -lcurl -lpthread
 INC      = -I. -I.. -I${HTSINC}
 
-OBJS = test-main.o bcf-variant.o bcf-reader.o bcf-writer.o read-stdin.o
+OBJS = test-main.o bcf-header.o bcf-variant.o bcf-reader.o bcf-writer.o read-stdin.o
 
-BINS = bcf-variant.bin bcf-reader.bin bcf-writer.bin read-stdin
+BINS = bcf-header.bin bcf-variant.bin bcf-reader.bin bcf-writer.bin read-stdin
 
 .PHONY: all test clean
 
@@ -31,6 +31,7 @@ clean:
 
 test:
 	cat test-vcf-read.vcf | ./read-stdin
+	./bcf-header.bin --success 2> /dev/null
 	./bcf-reader.bin --success 2> /dev/null
 	./bcf-writer.bin --success 2> /dev/null
 	./bcf-variant.bin --success 2> /dev/null
