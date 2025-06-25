@@ -2,7 +2,7 @@
  * @file        https://github.com/Zilong-Li/vcfpp/vcfpp.h
  * @author      Zilong Li
  * @email       zilong.dk@gmail.com
- * @version     v0.7.2
+ * @version     v0.7.3
  * @breif       a single C++ file for manipulating VCF
  * Copyright (C) 2022-2025.The use of this code is governed by the LICENSE file.
  ******************************************************************************/
@@ -1750,17 +1750,17 @@ class BcfReader
      * @param region the string for region is samtools-like format, which can be 'chr', 'chr:start' and
      * 'chr:start-end'
      * */
-    void setRegion(std::string region)
+    void setRegion(const std::string& region)
     {
-        std::string::size_type n;
-        // if region is chr:pos, turn it into chr:pos-pos
-        if((n = region.find('-')) == std::string::npos)
-        {
-            if((n = region.find(':')) != std::string::npos)
-            {
-                region += "-" + region.substr(n + 1, std::string::npos);
-            }
-        }
+        // std::string::size_type n;
+        // // if region is chr:pos, turn it into chr:pos-pos
+        // if((n = region.find('-')) == std::string::npos)
+        // {
+        //     if((n = region.find(':')) != std::string::npos)
+        //     {
+        //         region += "-" + region.substr(n + 1, std::string::npos);
+        //     }
+        // }
         // 1. check and load index first
         // 2. query iterval region
         // 3. if region is empty, use "."

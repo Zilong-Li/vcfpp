@@ -194,16 +194,16 @@ TEST_CASE("can count the number of variants in a valid region", "[bcf-reader]")
     REQUIRE(nVariants == 15);
 }
 
-TEST_CASE("can work with chr:pos form", "[bcf-reader]")
+TEST_CASE("region with chr:pos form always return all variant", "[bcf-reader]")
 {
     int nVariants = -1;
     BcfReader br("test-region.vcf.gz");
     nVariants = br.getVariantsCount("chr21:5030088");
-    REQUIRE(nVariants == 1);
+    REQUIRE(nVariants == 14);
     nVariants = br.getVariantsCount("chr21:5030087");
-    REQUIRE(nVariants == 0);
+    REQUIRE(nVariants == 14);
     nVariants = br.getVariantsCount("chr21:5030089");
-    REQUIRE(nVariants == 0);
+    REQUIRE(nVariants == 13);
 }
 
 TEST_CASE("subset both region and samples for bcf", "[bcf-reader]")
