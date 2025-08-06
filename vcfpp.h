@@ -2,7 +2,7 @@
  * @file        https://github.com/Zilong-Li/vcfpp/vcfpp.h
  * @author      Zilong Li
  * @email       zilong.dk@gmail.com
- * @version     v0.7.3
+ * @version     v0.8.0
  * @breif       a single C++ file for manipulating VCF
  * Copyright (C) 2022-2025.The use of this code is governed by the LICENSE file.
  ******************************************************************************/
@@ -565,6 +565,63 @@ class BcfRecord
         initHeader(h);
     }
 
+    /// copy constructor
+    BcfRecord(const BcfRecord & other)
+    : line(std::shared_ptr<bcf1_t>(bcf_dup(other.line.get()), details::bcf_line_close())),
+      header(other.header), gts(nullptr), ndst(other.ndst), ret(other.ret), nsamples(other.nsamples),
+      noneMissing(other.noneMissing), isAllPhased(other.isAllPhased), nploidy(other.nploidy),
+      nvalues(other.nvalues), isGenoMissing(other.isGenoMissing), typeOfGT(other.typeOfGT),
+      gtPhase(other.gtPhase)
+    {
+        if(other.gts && ndst > 0)
+        {
+            gts = (int32_t *)malloc(ndst * sizeof(int32_t));
+            if(gts)
+            {
+                memcpy(gts, other.gts, ndst * sizeof(int32_t));
+            }
+        }
+    }
+
+    /// copy assignment operator
+    BcfRecord & operator=(const BcfRecord & other)
+    {
+        if(this != &other)
+        {
+            // Free existing resources
+            if(gts)
+            {
+                free(gts);
+                gts = nullptr;
+            }
+
+            // Copy all members
+            line = std::shared_ptr<bcf1_t>(bcf_dup(other.line.get()), details::bcf_line_close());
+            header = other.header;
+            ndst = other.ndst;
+            ret = other.ret;
+            nsamples = other.nsamples;
+            noneMissing = other.noneMissing;
+            isAllPhased = other.isAllPhased;
+            nploidy = other.nploidy;
+            nvalues = other.nvalues;
+            isGenoMissing = other.isGenoMissing;
+            typeOfGT = other.typeOfGT;
+            gtPhase = other.gtPhase;
+
+            // Deep copy gts if it exists
+            if(other.gts && ndst > 0)
+            {
+                gts = (int32_t *)malloc(ndst * sizeof(int32_t));
+                if(gts)
+                {
+                    memcpy(gts, other.gts, ndst * sizeof(int32_t));
+                }
+            }
+        }
+        return *this;
+    }
+
     ~BcfRecord()
     {
         if(gts) free(gts);
@@ -629,6 +686,14 @@ class BcfRecord
 #    endif
             return false;
         }
+        // Check for memory allocation failure
+        if(!gts)
+        {
+#    if defined(VERBOSE)
+            std::cerr << "Memory allocation failed for genotypes.\n";
+#    endif
+            return false;
+        }
         // find the max nploidy using the first variant (eg. 2) resize v as max(nploidy)
         // * nsamples (ret) NOTE: if ret == nsamples and only one sample then haploid
         if(ret != nploidy * nsamples && nploidy > 0)
@@ -666,10 +731,16 @@ class BcfRecord
                 // TODO: right now only parse 0 and 1, ie max(nploidy)=2; other values 2,3... will be set to 1
                 v[i * nploidy + j] = bcf_gt_allele(gts[j + i * nploidy_cur]) != 0;
             }
-            if(nploidy == 2)
+            // Add bounds checking for phase access
+            if(nploidy == 2 && nploidy_cur >= 2)
             {
                 gtPhase[i] = (gts[1 + i * nploidy_cur] & 1) == 1;
                 nphased += gtPhase[i];
+            }
+            else if(nploidy == 2)
+            {
+                // For haploid data in diploid context, set phase to false
+                gtPhase[i] = false;
             }
         }
         if(nphased == nsamples)
@@ -698,6 +769,14 @@ class BcfRecord
         {
 #    if defined(VERBOSE)
             std::cerr << "GT not present for current site. did you initilize the variant object?\n";
+#    endif
+            return false;
+        }
+        // Check for memory allocation failure
+        if(!gts)
+        {
+#    if defined(VERBOSE)
+            std::cerr << "Memory allocation failed for genotypes.\n";
 #    endif
             return false;
         }
@@ -780,13 +859,16 @@ class BcfRecord
         if(ret >= 0)
         {
             // user have to check if there is missing in the return v;
-            v = std::vector<S>(dst, dst + ret);
-            free(dst);
+            if(dst)
+            {
+                v = std::vector<S>(dst, dst + ret);
+                free(dst);
+            }
             return true;
         }
         else
         {
-            free(dst);
+            if(dst) free(dst);
             return false;
         }
     }
@@ -818,14 +900,20 @@ class BcfRecord
                 // Ugly: GT field is considered to be a string by the VCF header but BCF represents it as INT.
                 v.emplace_back(dst[i]);
             };
-            free(dst[0]);
-            free(dst);
+            if(dst)
+            {
+                if(dst[0]) free(dst[0]);
+                free(dst);
+            }
             return true;
         }
         else
         {
-            free(dst[0]);
-            free(dst);
+            if(dst)
+            {
+                if(dst[0]) free(dst[0]);
+                free(dst);
+            }
             return false;
         }
     }
@@ -857,13 +945,16 @@ class BcfRecord
         }
         if(ret >= 0)
         {
-            v = std::vector<S>(dst, dst + ret); // user have to check if there is missing in the return v;
-            free(dst);
+            if(dst)
+            {
+                v = std::vector<S>(dst, dst + ret); // user have to check if there is missing in the return v;
+                free(dst);
+            }
             return true;
         }
         else
         {
-            free(dst);
+            if(dst) free(dst);
             return false;
         }
     }
@@ -1040,7 +1131,16 @@ class BcfRecord
         // bcf_gt_type
         int i, j, k;
         nploidy = v.size() / nsamples;
-        int32_t * gt = (int32_t *)malloc(v.size() * sizeof(int32_t));
+        // Use RAII wrapper for automatic memory management
+        std::unique_ptr<int32_t[]> gt(new int32_t[v.size()]);
+        if(!gt)
+        {
+#    if defined(VERBOSE)
+            std::cerr << "memory allocation failed for genotypes.\n";
+#    endif
+            return false;
+        }
+
         for(i = 0; i < nsamples; i++)
         {
             for(j = 0; j < nploidy; j++)
@@ -1060,15 +1160,13 @@ class BcfRecord
                 }
             }
         }
-        if(bcf_update_genotypes(header->hdr.get(), line.get(), gt, v.size()) < 0)
+        if(bcf_update_genotypes(header->hdr.get(), line.get(), gt.get(), v.size()) < 0)
         {
-            free(gt);
 #    if defined(VERBOSE)
             std::cerr << "couldn't set genotypes correctly.\n";
 #    endif
             return false;
         }
-        free(gt);
         return true;
     }
 
