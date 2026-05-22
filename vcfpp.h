@@ -2,7 +2,7 @@
  * @file        https://github.com/Zilong-Li/vcfpp/vcfpp.h
  * @author      Zilong Li
  * @email       zilong.dk@gmail.com
- * @version     v0.7.3
+ * @version     v0.7.4
  * @breif       a single C++ file for manipulating VCF
  * Copyright (C) 2022-2025.The use of this code is governed by the LICENSE file.
  ******************************************************************************/
@@ -107,7 +107,7 @@ isScalar<T> isMissing(T const & v)
     }
     else if(std::is_same<T, int>::value)
     {
-        return bcf_int32_missing(v);
+        return bcf_int32_missing == v;
     }
 }
 
