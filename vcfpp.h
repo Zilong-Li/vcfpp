@@ -2,7 +2,7 @@
  * @file        https://github.com/Zilong-Li/vcfpp/vcfpp.h
  * @author      Zilong Li
  * @email       zilong.dk@gmail.com
- * @version     v0.7.4
+ * @version     v0.7.5
  * @breif       a single C++ file for manipulating VCF
  * Copyright (C) 2022-2025.The use of this code is governed by the LICENSE file.
  ******************************************************************************/
@@ -1673,15 +1673,6 @@ class BcfReader
         bcf_hdr_destroy(h);
         nsamples = header.nSamples();
         SamplesName = header.getSamples();
-        if(file == "-") return;
-        if(isBcf)
-        {
-            hidx = std::shared_ptr<hts_idx_t>(bcf_index_load(fname.c_str()), details::hts_idx_close());
-        }
-        else
-        {
-            tidx = std::shared_ptr<tbx_t>(tbx_index_load(fname.c_str()), details::tabix_idx_close());
-        }
     }
 
     /** @brief set the number of threads to use */
@@ -1766,6 +1757,11 @@ class BcfReader
         // 3. if region is empty, use "."
         if(isBcf)
         {
+            if(hidx.get() == nullptr)
+            {
+                hidx = std::shared_ptr<hts_idx_t>(bcf_index_load(fname.c_str()), details::hts_idx_close());
+                if(hidx.get() == nullptr) throw std::invalid_argument(" no bcf index found!");
+            }
             if(itr) itr.reset(); // reset current region.
             if(region.empty())
                 itr = std::shared_ptr<hts_itr_t>(bcf_itr_querys(hidx.get(), header.hdr.get(), "."),
@@ -1776,6 +1772,10 @@ class BcfReader
         }
         else
         {
+            if(tidx.get() == nullptr)
+            {
+                tidx = std::shared_ptr<tbx_t>(tbx_index_load(fname.c_str()), details::tabix_idx_close());
+            }
             if(tidx.get() == nullptr) throw std::invalid_argument(" no tabix index found!");
             if(itr) itr.reset(); // reset
             if(region.empty())
