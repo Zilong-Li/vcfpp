@@ -22,6 +22,8 @@ Features:
 * Table of Contents :TOC:QUOTE:
 #+BEGIN_QUOTE
 - [[#installation][Installation]]
+  - [[#use-with-cmake][Use with CMake]]
+  - [[#use-with-cpmcmake][Use with CPM.cmake]]
 - [[#usage][Usage]]
   - [[#reading-vcf][Reading VCF]]
   - [[#genotypes-coding][Genotypes Coding]]
@@ -38,7 +40,56 @@ Features:
 1. install [[https://github.com/samtools/htslib][htslib]] on your system
 2. download the released [[https://github.com/Zilong-Li/vcfpp/releases/latest][vcfpp.h]]
 3. put =vcfpp.h= in the same folder as your cpp source file or a folder say =/my/writable/path/= or the system path
- 
+
+** Use with CMake
+
+This repository also provides an interface CMake target, =vcfpp::vcfpp=.
+The target adds the include path for =vcfpp.h=, requires C++11, and links to
+=htslib=.
+
+After installing vcfpp with CMake, use it from another project with:
+
+#+begin_src cmake
+find_package(vcfpp REQUIRED)
+
+add_executable(my_tool main.cpp)
+target_link_libraries(my_tool PRIVATE vcfpp::vcfpp)
+#+end_src
+
+=htslib= must be installed and discoverable by CMake. If =pkg-config= can find
+=htslib=, vcfpp will use that imported target. Otherwise CMake searches for
+=htslib/hts.h= and =libhts= directly.
+
+** Use with CPM.cmake
+
+For projects using [[https://github.com/cpm-cmake/CPM.cmake][CPM.cmake]], add vcfpp as a package and link the exported
+target:
+
+#+begin_src cmake
+cmake_minimum_required(VERSION 3.14)
+project(my_project LANGUAGES CXX)
+
+include(cmake/CPM.cmake)
+
+CPMAddPackage(
+    NAME vcfpp
+    GITHUB_REPOSITORY Zilong-Li/vcfpp
+    GIT_TAG v0.7.4
+)
+
+add_executable(my_tool main.cpp)
+target_link_libraries(my_tool PRIVATE vcfpp::vcfpp)
+#+end_src
+
+Your source can then include the header normally:
+
+#+begin_src C++
+#include <vcfpp.h>
+#+end_src
+
+Keep =htslib= installed on the build machine because =vcfpp.h= includes
+=htslib= headers and links to =libhts=.
+
 * Usage
 
 The documentation of API is [[https://zilongli.org/proj/vcfpp/index.html][here.]]
@@ -189,4 +240,3 @@ Examples of vcfpp working with Python are in folder [[Pybind11]].
 * Command Line Tools
 
 Find more useful command line tools in folder [[tools]].
-

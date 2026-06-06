@@ -1,0 +1,33 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+    pkg_check_modules(HTSLIB QUIET IMPORTED_TARGET htslib)
+endif()
+
+if(NOT TARGET PkgConfig::HTSLIB)
+    find_path(HTSLIB_INCLUDE_DIR NAMES htslib/hts.h)
+    find_library(HTSLIB_LIBRARY NAMES hts)
+
+    if(HTSLIB_INCLUDE_DIR AND HTSLIB_LIBRARY AND NOT TARGET HTSLIB::hts)
+        add_library(HTSLIB::hts UNKNOWN IMPORTED)
+        set_target_properties(
+            HTSLIB::hts
+            PROPERTIES
+                IMPORTED_LOCATION "${HTSLIB_LIBRARY}"
+                INTERFACE_INCLUDE_DIRECTORIES "${HTSLIB_INCLUDE_DIR}"
+        )
+    endif()
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/vcfppTargets.cmake")
+
+if(TARGET vcfpp::vcfpp)
+    if(TARGET PkgConfig::HTSLIB)
+        target_link_libraries(vcfpp::vcfpp INTERFACE PkgConfig::HTSLIB)
+    elseif(TARGET HTSLIB::hts)
+        target_link_libraries(vcfpp::vcfpp INTERFACE HTSLIB::hts)
+    endif()
+endif()

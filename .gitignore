@@ -25,3 +25,5 @@ compile_commands.json
 *gz*
 *dSYM
 *.so
+/build/
+/tools/run.sh
